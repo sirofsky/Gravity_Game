@@ -17,7 +17,9 @@ bool bLongPress = false;
 Timer gravityPulseTimer;
 #define GRAVITY_PULSE 2000
 
-byte tempColor;
+bool bBlank;
+bool bSending;
+bool bReceived;
 
 void setup() {
   // put your setup code here, to run once:
@@ -28,7 +30,6 @@ void setup() {
 
 void loop() {
 
-  setRole();
 
   if (blinkRole != BUCKET) { //if I'm not a bucket...
     FOREACH_FACE(f) {
@@ -47,6 +48,7 @@ void loop() {
   }
 
   displayLoop();
+  setRole();
 
   FOREACH_FACE(f) {
     byte sendData = (signalState[f] << 3) + (gravityState[f]);
@@ -63,29 +65,8 @@ void blankLoop(byte face) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
       //I heard sending
 
-      //1. parse its actual message (gravity state)
-      if (getGravityState(getLastValueReceivedOnFace(face)) == LEFT_DOWN) {
-        tempColor = 0;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(face)) == LEFT_UP) {
-        tempColor = 20;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(face)) == TOP) {
-        tempColor = 40;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(face)) == RIGHT_UP) {
-        tempColor = 80;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(face)) == RIGHT_DOWN) {
-        tempColor = 160;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(face)) == BOTTOM) {
-        tempColor = 200;
-      }
-
 
       //2. arrange my own gravity state to match
-      setColor(makeColorHSB(tempColor, 255, 255));
 
       //3. change my own face to Received
       signalState[face] = RECEIVED;
@@ -105,10 +86,15 @@ void blankLoop(byte face) {
 }
 
 void sendingLoop(byte face) {
+
   if (!isValueReceivedOnFaceExpired(face)) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == RECEIVED) {
       //if the neighbor has already received a message, stop sending and turn to blank.
       signalState[face] = BLANK;
+    }
+    if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
+      //if the neighbor has already received a message, stop sending and turn to blank.
+      signalState[face] = RECEIVED;
     }
   } else {
     signalState[face] = BLANK;
@@ -117,6 +103,7 @@ void sendingLoop(byte face) {
 }
 
 void receivedLoop(byte face) {
+
   if (!isValueReceivedOnFaceExpired(face)) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == BLANK) {
       //if the neighbor is blank, stop sending and turn to blank.
@@ -127,13 +114,25 @@ void receivedLoop(byte face) {
   }
 }
 
-void displayLoop(){
- 
-  
-  
+//DISPLAY LOOP --------------------------------------------------
+
+void displayLoop() {
+
+  FOREACH_FACE(f) {
+    if (signalState[f] == BLANK){ 
+        setColorOnFace(WHITE, f); 
+    }
+    if (signalState[f] == SENDING){ 
+        setColorOnFace(RED, f); 
+    }
+    if (signalState[f] == RECEIVED){ 
+        setColorOnFace(BLUE, f); 
+    }
   }
 
-//WALL -----------------------------------------
+}
+
+//WALL -----------------------------------------------
 void wallLoop() {
 
   if (bChangeRole) {
@@ -165,33 +164,11 @@ void gravityLoop() {
   }
 
 
-
-  if (tempColor == 0) {
-    setColor(RED);
-  }
-  if (tempColor == 1) {
-    setColor(ORANGE);
-  }
-  if (tempColor == 2) {
-    setColor(YELLOW);
-  }
-  if (tempColor == 3) {
-    setColor(GREEN);
-  }
-  if (tempColor == 4) {
-    setColor(BLUE);
-  }
-  if (tempColor == 5) {
-    setColor(MAGENTA);
-  }
-
-
   if (gravityPulseTimer.isExpired()) {
-    tempColor = (tempColor + 1) % 6;
     gravityPulseTimer.set(GRAVITY_PULSE);
     FOREACH_FACE(f) {
       signalState[f] = SENDING;
-      gravityState[f] == gravityStates(tempColor);
+      gravityState[f] = gravityStates(1);
     }
   }
 
@@ -232,7 +209,7 @@ void setRole() {
 
   if (bLongPress) {
     //transition color
-    setColor(WHITE);
+    setColor(MAGENTA);
   }
 }
 
