@@ -1,21 +1,33 @@
 //GRAVITY TEST
 
+
 enum blinkRoles {WALL, GRAVITY, BUCKET};
 byte blinkRole = WALL;
 
-enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, NOTHING, IM_BUCKET};
+enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, NOTHING};
 byte gravityState[6] = {NOTHING, NOTHING, NOTHING, NOTHING, NOTHING, NOTHING};
 
-enum signalStates {BLANK, SENDING, LISTENING, RECEIVED};
+enum signalStates {BLANK, SENDING, RECEIVED, IM_BUCKET};
 byte signalState[6] = {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK};
 
 bool bChangeRole = false;
 bool bLongPress = false;
 
+byte tFace;
+byte bFace;
+byte luFace;
+byte ldFace;
+byte ruFace;
+byte rdFace;
+
+
+
 
 //GRAVITY
 Timer gravityPulseTimer;
 #define GRAVITY_PULSE 2000
+
+byte gravityFace;
 
 bool bBlank;
 bool bSending;
@@ -30,6 +42,9 @@ void setup() {
 
 void loop() {
 
+  displayLoop();
+
+  setRole();
 
   if (blinkRole != BUCKET) { //if I'm not a bucket...
     FOREACH_FACE(f) {
@@ -45,10 +60,9 @@ void loop() {
           break;
       }
     }
+
   }
 
-  displayLoop();
-  setRole();
 
   FOREACH_FACE(f) {
     byte sendData = (signalState[f] << 3) + (gravityState[f]);
@@ -82,8 +96,8 @@ void blankLoop(byte face) {
     }
   }
 
-
 }
+
 
 void sendingLoop(byte face) {
 
@@ -95,6 +109,11 @@ void sendingLoop(byte face) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
       //if the neighbor has already received a message, stop sending and turn to blank.
       signalState[face] = RECEIVED;
+    }
+    if (blinkRole == GRAVITY) {
+      if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
+        signalState[face] = BLANK;
+      }
     }
   } else {
     signalState[face] = BLANK;
@@ -118,15 +137,23 @@ void receivedLoop(byte face) {
 
 void displayLoop() {
 
-  FOREACH_FACE(f) {
-    if (signalState[f] == BLANK){ 
-        setColorOnFace(WHITE, f); 
-    }
-    if (signalState[f] == SENDING){ 
-        setColorOnFace(RED, f); 
-    }
-    if (signalState[f] == RECEIVED){ 
-        setColorOnFace(BLUE, f); 
+  //This is where we're going to control all visuals I think...maybe that's a terrible idea?
+
+  if (blinkRole == BUCKET) {
+    setColor(GREEN);
+  }
+
+  if (blinkRole != BUCKET) {
+    FOREACH_FACE(f) {
+      if (signalState[f] == BLANK) {
+        //        setColorOnFace(WHITE, f);
+      }
+      if (signalState[f] == SENDING) {
+        setColorOnFace(RED, f);
+      }
+      if (signalState[f] == RECEIVED) {
+        setColorOnFace(BLUE, f);
+      }
     }
   }
 
@@ -140,7 +167,6 @@ void wallLoop() {
     bChangeRole = false;
   }
 
-
 }
 
 
@@ -151,7 +177,9 @@ void bucketLoop() {
     bChangeRole = false;
   }
 
-  setColor(GREEN);
+  FOREACH_FACE(f) {
+    signalState[f] = IM_BUCKET;
+  }
 
 }
 
@@ -162,6 +190,25 @@ void gravityLoop() {
     blinkRole = WALL;
     bChangeRole = false;
   }
+
+  byte bucketCount = 0;
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      if (getSignalState(getLastValueReceivedOnFace(f)) == IM_BUCKET) {
+        setColorOnFace(MAGENTA, f);
+        bucketCount = bucketCount + 1;
+      }
+    }
+  }
+
+  if (bucketCount == 2) {
+    setColor(BLUE);
+  } else {
+    setColor(CYAN);
+  }
+
+
 
 
   if (gravityPulseTimer.isExpired()) {
@@ -175,10 +222,10 @@ void gravityLoop() {
 }
 
 
-//-------------------------------------
+
+//------------------------------------------
 
 void setRole() {
-  // put your main code here, to run repeatedly:
   if (hasWoken()) {
     bLongPress = false;
   }
