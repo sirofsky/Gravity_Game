@@ -191,22 +191,53 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
+  //how many buckets is gravity touching?
+
   byte bucketCount = 0;
 
+  //  bool bFace[6] = {false, false, false, false, false, false};
+
+//  bool bFace0 = false;
+//  bool bFace1 = false;
+//  bool bFace2 = false;
+//  bool bFace3 = false;
+//  bool bFace4 = false;
+//  bool bFace5 = false;
+//
+//  bool bGravityOn = false;
+
+  setColor(CYAN);
+
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getSignalState(getLastValueReceivedOnFace(f)) == IM_BUCKET) {
-        setColorOnFace(MAGENTA, f);
-        bucketCount = bucketCount + 1;
+
+    if (isBucket(f)) {
+      byte bucketNeighbor = (f + 2) % 6;
+      if (isBucket(bucketNeighbor)) {
+        setColor(BLUE);
       }
     }
+
+
   }
 
-  if (bucketCount == 2) {
-    setColor(BLUE);
-  } else {
-    setColor(CYAN);
-  }
+
+  //    if (bFace[f] == false) {
+  //      //      setColorOnFace(ORANGE, f);
+  //    }
+  //
+  //    if (bucketCount == 2) {
+  //      if (bFace[f] == true) {
+  //        setColorOnFace(MAGENTA, f);
+  //        byte matchingBucketFace = (f + 2) % 6;
+  //        byte bonusFace = (f + 1) % 6;
+  //        if (bFace[matchingBucketFace] == true) {
+  //          setColorOnFace(BLUE, bonusFace);
+  //        }
+  //      }
+  //
+  //    } else {
+  //      //          setColor(CYAN);
+  //    }
 
 
 
@@ -219,7 +250,24 @@ void gravityLoop() {
     }
   }
 
+
 }
+
+bool isBucket (byte face) {
+  if (!isValueReceivedOnFaceExpired(face)) { //I have a neighbor
+
+    if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
+      return true;
+    } else if (getSignalState(getLastValueReceivedOnFace(face)) != IM_BUCKET) {
+      return false;
+    }
+  } else {
+    return false;
+    }
+
+}
+
+
 
 
 
