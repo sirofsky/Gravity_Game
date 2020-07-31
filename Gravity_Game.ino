@@ -28,6 +28,8 @@ byte bottomFace;
 #define WALLBLUE makeColorHSB(200, 255, 230) //more like purple
 #define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
 
+#define BALLCOLOR makeColorRGB(255, 255, 100)
+
 
 //GRAVITY
 Timer gravityPulseTimer;
@@ -35,7 +37,17 @@ Timer gravityPulseTimer;
 
 //BALL
 Timer ballDropTimer;
-#define BALL_PULSE 1000
+#define BALL_PULSE 250
+
+bool bBallFalling = false;
+
+byte ballPos;
+byte stepCount = 0;
+
+bool ballFell = false;
+
+
+
 
 byte gravityFace;
 
@@ -54,7 +66,7 @@ void setup() {
 
 void loop() {
 
-  displayLoop();
+  //  displayLoop();
 
   setRole();
 
@@ -164,38 +176,38 @@ void receivedLoop(byte face) {
 
 //DISPLAY LOOP --------------------------------------------------
 
-void displayLoop() {
-
-  //This is where we're going to control all visuals I think...maybe that's a terrible idea?
-
-  if (blinkRole == BUCKET) {
-    setColor(GREEN);
-  }
-
-  if (blinkRole == WALL) {
-    setColor(dim(WHITE, 60));
-
-    //this is for bugfixing too:
-    //    setColorOnFace(WHITE, bottomFace);
-
-  }
-
-  //for Debugging purposes I don't want to get rid of this just yet:
-  //  if (blinkRole != BUCKET) {
-  //    FOREACH_FACE(f) {
-  //      if (signalState[f] == BLANK) {
-  //        //        setColorOnFace(OFF, f);
-  //      }
-  //      if (signalState[f] == SENDING) {
-  //        setColorOnFace(RED, f);
-  //      }
-  //      if (signalState[f] == RECEIVED) {
-  //        setColorOnFace(BLUE, f);
-  //      }
-  //    }
-  //  }
-
-}
+//void displayLoop() {
+//
+//  //This is where we're going to control all visuals I think...maybe that's a terrible idea?
+//
+//  if (blinkRole == BUCKET) {
+//    setColor(GREEN);
+//  }
+//
+//  if (blinkRole == WALL) {
+//
+//
+//    //this is for bugfixing too:
+//    //    setColorOnFace(WHITE, bottomFace);
+//
+//  }
+//
+//  //for Debugging purposes I don't want to get rid of this just yet:
+//  //  if (blinkRole != BUCKET) {
+//  //    FOREACH_FACE(f) {
+//  //      if (signalState[f] == BLANK) {
+//  //        //        setColorOnFace(OFF, f);
+//  //      }
+//  //      if (signalState[f] == SENDING) {
+//  //        setColorOnFace(RED, f);
+//  //      }
+//  //      if (signalState[f] == RECEIVED) {
+//  //        setColorOnFace(BLUE, f);
+//  //      }
+//  //    }
+//  //  }
+//
+//}
 
 //WALL -----------------------------------------------
 void wallLoop() {
@@ -204,6 +216,8 @@ void wallLoop() {
     blinkRole = BUCKET;
     bChangeRole = false;
   }
+
+  setColor(dim(WHITE, 60));
 
   setWallRole();
 
@@ -227,6 +241,30 @@ void wallLoop() {
       gravityState[f] = RIGHT_DOWN;
     }
   }
+
+
+  if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
+    if (buttonSingleClicked()) {
+      bBallFalling = true;
+    } else if (!isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) {
+      //      bBallFalling = false;
+    }
+  }
+  //otherwise we out here listening for anyone saying ball
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
+        bBallFalling = true;
+      }
+    }
+
+  }
+
+  if (bBallFalling == true) {
+    ballLogic();
+  }
+
+
 
 }
 
@@ -273,10 +311,56 @@ void switcherLoop() {
   setColorOnFace(WALLPURPLE, (bottomFace + 1) % 6);
 }
 
-void ballLogic(){
-  
-  
+void ballLogic () {
+
+  byte startingFace;
+
+  startingFace = (bottomFace + 3) % 6;
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
+        startingFace = f;
+      }
+    }
   }
+
+  if (ballDropTimer.isExpired()) {
+
+    if (wallRole == FUNNEL) {
+
+      if (stepCount == 1) {
+        ballPos = startingFace;
+      }
+      if (stepCount == 2) {
+        ballPos = bottomFace;
+        ballState[ballPos] = BALL;
+      }
+      if (stepCount == 3) {
+        ballFell = true;
+      }
+    }
+
+    ballDropTimer.set(BALL_PULSE);
+    stepCount = stepCount + 1;
+
+  } else if (!ballDropTimer.isExpired()) {
+
+    //we don't want to see the first frame of the ball dropping
+    if (stepCount > 1) {
+      setColorOnFace(YELLOW, ballPos);
+    }
+
+    if (ballFell == true) {
+      stepCount = 0;
+      ballState[ballPos] = NO_BALL;
+      bBallFalling = false;
+      ballFell = false;
+
+    }
+  }
+
+}
 
 //BUCKET -------------------------
 void bucketLoop() {
@@ -439,7 +523,6 @@ byte getGravityState(byte data) {
 byte getSignalState(byte data) {
   return ((data >> 3) & 3); //returns bits B and C...hopefully?
 }
-
 
 byte getBallState(byte data) {
   return ((data >> 5) & 1); //returns bit A...hopefully?
