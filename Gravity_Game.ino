@@ -20,6 +20,7 @@ byte ldFace;
 byte ruFace;
 byte rdFace;
 
+byte bottomFace;
 
 
 
@@ -81,22 +82,67 @@ void blankLoop(byte face) {
 
 
       //2. arrange my own gravity state to match
+      FOREACH_FACE(f) {
+        if (!isValueReceivedOnFaceExpired(f)) {
+
+          if (getGravityState(getLastValueReceivedOnFace(f)) == BOTTOM) {
+            bottomFace = (f + 3) % 6;
+          }
+          if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_DOWN) {
+            bottomFace = (f + 2) % 6;
+          }
+          if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_UP) {
+            bottomFace = (f + 1) % 6;
+          }
+          if (getGravityState(getLastValueReceivedOnFace(f)) == TOP) {
+            bottomFace = f;
+          }
+          if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_UP) {
+            bottomFace = (f + 5) % 6;
+          }
+          if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_DOWN) {
+            bottomFace = (f + 4) % 6;
+          }
+        }
+      }
+
+      FOREACH_FACE(f) {
+        if (f == bottomFace) {
+          gravityState[f] = BOTTOM;
+        }
+        if (f == (bottomFace + 1) % 6) {
+          gravityState[f] = LEFT_DOWN;
+        }
+        if (f == (bottomFace + 2) % 6) {
+          gravityState[f] = LEFT_UP;
+        }
+        if (f == (bottomFace + 3) % 6) {
+          gravityState[f] = TOP;
+        }
+        if (f == (bottomFace + 4) % 6) {
+          gravityState[f] = RIGHT_UP;
+        }
+        if (f == (bottomFace + 5) % 6) {
+          gravityState[f] = RIGHT_DOWN;
+        }
+      }
 
       //3. change my own face to Received
       signalState[face] = RECEIVED;
 
       //4. set any faces I have that are in BLANK to sending
-      FOREACH_FACE(f) {
-        gravityState[f] = getGravityState(getLastValueReceivedOnFace(face));
 
-        if (signalState[f] == BLANK) {
-          signalState[f] = SENDING;
+      FOREACH_FACE(f) {
+        if (!isValueReceivedOnFaceExpired(f)) {
+          if (signalState[f] == BLANK) {
+            signalState[f] = SENDING;
+          }
         }
       }
     }
   }
-
 }
+
 
 
 void sendingLoop(byte face) {
@@ -110,10 +156,10 @@ void sendingLoop(byte face) {
       //if the neighbor has already received a message, stop sending and turn to blank.
       signalState[face] = RECEIVED;
     }
-    if (blinkRole == GRAVITY) {
-      if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
-        signalState[face] = BLANK;
-      }
+    //    if (blinkRole == GRAVITY) {
+    if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
+      signalState[face] = BLANK;
+      //      }
     }
   } else {
     signalState[face] = BLANK;
@@ -143,10 +189,15 @@ void displayLoop() {
     setColor(GREEN);
   }
 
+  if (blinkRole == WALL) {
+    setColor(YELLOW);
+    setColorOnFace(WHITE, bottomFace);
+  }
+
   if (blinkRole != BUCKET) {
     FOREACH_FACE(f) {
       if (signalState[f] == BLANK) {
-        //        setColorOnFace(WHITE, f);
+        //        setColorOnFace(OFF, f);
       }
       if (signalState[f] == SENDING) {
         setColorOnFace(RED, f);
@@ -166,6 +217,9 @@ void wallLoop() {
     blinkRole = BUCKET;
     bChangeRole = false;
   }
+
+
+
 
 }
 
@@ -191,84 +245,60 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
-  //how many buckets is gravity touching?
-
-  byte bucketCount = 0;
-
-  //  bool bFace[6] = {false, false, false, false, false, false};
-
-//  bool bFace0 = false;
-//  bool bFace1 = false;
-//  bool bFace2 = false;
-//  bool bFace3 = false;
-//  bool bFace4 = false;
-//  bool bFace5 = false;
-//
-//  bool bGravityOn = false;
-
   setColor(CYAN);
 
-  FOREACH_FACE(f) {
+  byte bFace;
 
+  //figure out which face is down.
+
+  FOREACH_FACE(f) {
     if (isBucket(f)) {
       byte bucketNeighbor = (f + 2) % 6;
       if (isBucket(bucketNeighbor)) {
+        bFace = (f + 1) % 6;
         setColor(BLUE);
+        setColorOnFace(WHITE, bFace); //this face is the "bottom", the direction of gravity
       }
     }
-
-
   }
-
-
-  //    if (bFace[f] == false) {
-  //      //      setColorOnFace(ORANGE, f);
-  //    }
-  //
-  //    if (bucketCount == 2) {
-  //      if (bFace[f] == true) {
-  //        setColorOnFace(MAGENTA, f);
-  //        byte matchingBucketFace = (f + 2) % 6;
-  //        byte bonusFace = (f + 1) % 6;
-  //        if (bFace[matchingBucketFace] == true) {
-  //          setColorOnFace(BLUE, bonusFace);
-  //        }
-  //      }
-  //
-  //    } else {
-  //      //          setColor(CYAN);
-  //    }
-
-
-
 
   if (gravityPulseTimer.isExpired()) {
     gravityPulseTimer.set(GRAVITY_PULSE);
     FOREACH_FACE(f) {
       signalState[f] = SENDING;
-      gravityState[f] = gravityStates(1);
+      if (f == bFace) {
+        gravityState[f] = BOTTOM;
+      }
+      if (f == (bFace + 1) % 6) {
+        gravityState[f] = LEFT_DOWN;
+      }
+      if (f == (bFace + 2) % 6) {
+        gravityState[f] = LEFT_UP;
+      }
+      if (f == (bFace + 3) % 6) {
+        gravityState[f] = TOP;
+      }
+      if (f == (bFace + 4) % 6) {
+        gravityState[f] = RIGHT_UP;
+      }
+      if (f == (bFace + 5) % 6) {
+        gravityState[f] = RIGHT_DOWN;
+      }
     }
   }
-
-
 }
 
 bool isBucket (byte face) {
   if (!isValueReceivedOnFaceExpired(face)) { //I have a neighbor
-
-    if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
+    if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) { //if the neighbor is a bucket, return true
       return true;
-    } else if (getSignalState(getLastValueReceivedOnFace(face)) != IM_BUCKET) {
+    } else if (getSignalState(getLastValueReceivedOnFace(face)) != IM_BUCKET) { //if the neighbor isn't a bucket, return false
       return false;
     }
   } else {
-    return false;
-    }
-
+    return false; //or if I don't have a neighbor, that's also a false
+  }
 }
-
-
-
 
 
 //------------------------------------------
