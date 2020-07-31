@@ -13,20 +13,12 @@ byte signalState[6] = {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK};
 bool bChangeRole = false;
 bool bLongPress = false;
 
-byte tFace;
-byte bFace;
-byte luFace;
-byte ldFace;
-byte ruFace;
-byte rdFace;
-
 byte bottomFace;
-
 
 
 //GRAVITY
 Timer gravityPulseTimer;
-#define GRAVITY_PULSE 2000
+#define GRAVITY_PULSE 50
 
 byte gravityFace;
 
@@ -78,53 +70,27 @@ void blankLoop(byte face) {
   if (!isValueReceivedOnFaceExpired(face)) {
 
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
-      //I heard sending
-
+      
+      //Guess what? I heard sending
 
       //2. arrange my own gravity state to match
-      FOREACH_FACE(f) {
-        if (!isValueReceivedOnFaceExpired(f)) {
-
-          if (getGravityState(getLastValueReceivedOnFace(f)) == BOTTOM) {
-            bottomFace = (f + 3) % 6;
-          }
-          if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_DOWN) {
-            bottomFace = (f + 2) % 6;
-          }
-          if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_UP) {
-            bottomFace = (f + 1) % 6;
-          }
-          if (getGravityState(getLastValueReceivedOnFace(f)) == TOP) {
-            bottomFace = f;
-          }
-          if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_UP) {
-            bottomFace = (f + 5) % 6;
-          }
-          if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_DOWN) {
-            bottomFace = (f + 4) % 6;
-          }
-        }
+      if (getGravityState(getLastValueReceivedOnFace(face)) == BOTTOM) {
+        bottomFace = (face + 3) % 6;
       }
-
-      FOREACH_FACE(f) {
-        if (f == bottomFace) {
-          gravityState[f] = BOTTOM;
-        }
-        if (f == (bottomFace + 1) % 6) {
-          gravityState[f] = LEFT_DOWN;
-        }
-        if (f == (bottomFace + 2) % 6) {
-          gravityState[f] = LEFT_UP;
-        }
-        if (f == (bottomFace + 3) % 6) {
-          gravityState[f] = TOP;
-        }
-        if (f == (bottomFace + 4) % 6) {
-          gravityState[f] = RIGHT_UP;
-        }
-        if (f == (bottomFace + 5) % 6) {
-          gravityState[f] = RIGHT_DOWN;
-        }
+      if (getGravityState(getLastValueReceivedOnFace(face)) == LEFT_DOWN) {
+        bottomFace = (face + 2) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(face)) == LEFT_UP) {
+        bottomFace = (face + 1) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(face)) == TOP) {
+        bottomFace = face;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(face)) == RIGHT_UP) {
+        bottomFace = (face + 5) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(face)) == RIGHT_DOWN) {
+        bottomFace = (face + 4) % 6;
       }
 
       //3. change my own face to Received
@@ -139,9 +105,11 @@ void blankLoop(byte face) {
           }
         }
       }
+      
     }
   }
 }
+
 
 
 
@@ -194,19 +162,20 @@ void displayLoop() {
     setColorOnFace(WHITE, bottomFace);
   }
 
-  if (blinkRole != BUCKET) {
-    FOREACH_FACE(f) {
-      if (signalState[f] == BLANK) {
-        //        setColorOnFace(OFF, f);
-      }
-      if (signalState[f] == SENDING) {
-        setColorOnFace(RED, f);
-      }
-      if (signalState[f] == RECEIVED) {
-        setColorOnFace(BLUE, f);
-      }
-    }
-  }
+  //for Debugging purposes I don't want to get rid of this just yet:
+  //  if (blinkRole != BUCKET) {
+  //    FOREACH_FACE(f) {
+  //      if (signalState[f] == BLANK) {
+  //        //        setColorOnFace(OFF, f);
+  //      }
+  //      if (signalState[f] == SENDING) {
+  //        setColorOnFace(RED, f);
+  //      }
+  //      if (signalState[f] == RECEIVED) {
+  //        setColorOnFace(BLUE, f);
+  //      }
+  //    }
+  //  }
 
 }
 
@@ -218,7 +187,26 @@ void wallLoop() {
     bChangeRole = false;
   }
 
-
+  FOREACH_FACE(f) {
+    if (f == bottomFace) {
+      gravityState[f] = BOTTOM;
+    }
+    if (f == (bottomFace + 1) % 6) {
+      gravityState[f] = LEFT_DOWN;
+    }
+    if (f == (bottomFace + 2) % 6) {
+      gravityState[f] = LEFT_UP;
+    }
+    if (f == (bottomFace + 3) % 6) {
+      gravityState[f] = TOP;
+    }
+    if (f == (bottomFace + 4) % 6) {
+      gravityState[f] = RIGHT_UP;
+    }
+    if (f == (bottomFace + 5) % 6) {
+      gravityState[f] = RIGHT_DOWN;
+    }
+  }
 
 
 }
