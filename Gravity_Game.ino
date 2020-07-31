@@ -36,6 +36,7 @@ Timer gravityPulseTimer;
 #define GRAVITY_PULSE 50
 
 byte gravityFace;
+byte bFace;
 
 //BALL (some variables needed to get the ball rolling)
 Timer ballDropTimer;
@@ -78,6 +79,9 @@ void loop() {
           break;
         case RECEIVED:
           receivedLoop(f);
+          break;
+        case IM_BUCKET:
+          imBucketLoop(f);
           break;
       }
     }
@@ -173,6 +177,10 @@ void receivedLoop(byte face) {
   }
 }
 
+void imBucketLoop(byte face){
+  signalState[face] = BLANK;
+  }
+
 //WALL -----------------------------------------------
 void wallLoop() {
 
@@ -181,9 +189,48 @@ void wallLoop() {
     bChangeRole = false;
   }
 
+  bool isGravity;
+
   setColor(dim(WHITE, 60));
 
   setWallRole();
+
+  FOREACH_FACE(f) {
+    if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
+      byte bucketNeighbor = (f + 2) % 6; //and what about their neighbor?
+      if (isBucket(bucketNeighbor)) {
+        bFace = (f + 1) % 6;
+        bottomFace = bFace;
+        gravityLoop();
+      }
+    } else {
+      wallLoopPart2();
+    }
+  }
+
+  if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
+    if (buttonSingleClicked()) {
+      bBallFalling = true;
+      startingFace = (bottomFace + 3) % 6;
+    }
+  }
+  //otherwise we out here listening for anyone saying ball
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
+        bBallFalling = true;
+        startingFace = f;
+      }
+    }
+  }
+
+  if (bBallFalling == true) {
+    ballLogic();
+  }
+
+}
+
+void wallLoopPart2() {
 
   FOREACH_FACE(f) {
     if (f == bottomFace) {
@@ -206,26 +253,6 @@ void wallLoop() {
     }
   }
 
-
-  if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
-    if (buttonSingleClicked()) {
-      bBallFalling = true;
-      startingFace = (bottomFace + 3) % 6; 
-    } 
-  }
-  //otherwise we out here listening for anyone saying ball
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
-        bBallFalling = true;
-        startingFace = f;
-      }
-    }
-  }
-
-  if (bBallFalling == true) {
-    ballLogic();
-  }
 
 }
 
@@ -314,7 +341,7 @@ void ballLogic () {
 //BUCKET -------------------------
 void bucketLoop() {
   if (bChangeRole) {
-    blinkRole = GRAVITY;
+    blinkRole = WALL;
     bChangeRole = false;
   }
 
@@ -323,7 +350,7 @@ void bucketLoop() {
   FOREACH_FACE(f) {
     signalState[f] = IM_BUCKET;
 
-    if (!isValueReceivedOnFaceExpired(f)) {
+    if (!isValueReceivedOnFaceExpired(f)) { //I have a neighbor
       if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_LEFT) {
 
         setColor(dim(WALLBLUE, 100));
@@ -336,8 +363,6 @@ void bucketLoop() {
 
   }
 
-
-
 }
 
 //GRAVITY -------------------------------
@@ -348,27 +373,14 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
-  setColor(CYAN);
-
-  byte bFace;
-
-  //figure out which face is down.
-
-  FOREACH_FACE(f) {
-    if (isBucket(f)) {
-      byte bucketNeighbor = (f + 2) % 6;
-      if (isBucket(bucketNeighbor)) {
-        bFace = (f + 1) % 6;
-        setColor(dim(BLUE, 180));
-        setColorOnFace(WHITE, bFace); //this face is the "bottom", the direction of gravity
-      }
-    }
-  }
+  setColor(dim(BLUE, 180));
+  setColorOnFace(WHITE, bFace);
 
   if (gravityPulseTimer.isExpired()) {
     gravityPulseTimer.set(GRAVITY_PULSE);
     FOREACH_FACE(f) {
       signalState[f] = SENDING;
+
       if (f == bFace) {
         gravityState[f] = BOTTOM;
       }
@@ -389,7 +401,7 @@ void gravityLoop() {
       }
     }
   }
-  
+
 }
 
 bool isBucket (byte face) {
@@ -432,9 +444,9 @@ void setRole() {
     case BUCKET:
       bucketLoop();
       break;
-    case GRAVITY:
-      gravityLoop();
-      break;
+      //    case GRAVITY:
+      //      gravityLoop();
+      //      break;
   }
 
   if (bLongPress) {
