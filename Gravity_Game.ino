@@ -1,5 +1,5 @@
-//GRAVITY TEST
-
+//GRAVITY TEST (AKA BLINK-O)
+//By Jacob Surovsky
 
 enum blinkRoles {WALL, GRAVITY, BUCKET};
 byte blinkRole = WALL;
@@ -35,11 +35,15 @@ byte bottomFace;
 Timer gravityPulseTimer;
 #define GRAVITY_PULSE 50
 
-//BALL
+byte gravityFace;
+
+//BALL (some variables needed to get the ball rolling)
 Timer ballDropTimer;
-#define BALL_PULSE 250
+#define BALL_PULSE 100
 
 bool bBallFalling = false;
+
+byte startingFace;
 
 byte ballPos;
 byte stepCount = 0;
@@ -47,17 +51,10 @@ byte stepCount = 0;
 bool ballFell = false;
 
 
-
-
-byte gravityFace;
-
-bool bBlank;
-bool bSending;
-bool bReceived;
-
 void setup() {
   // put your setup code here, to run once:
 
+  //gotta get some timers set here
   gravityPulseTimer.set(GRAVITY_PULSE);
 
   ballDropTimer.set(BALL_PULSE);
@@ -66,10 +63,10 @@ void setup() {
 
 void loop() {
 
-  //  displayLoop();
-
+  //long press logic to figure out what role we're in
   setRole();
 
+  //the main communication loop for signal states
   if (blinkRole != BUCKET) { //if I'm not a bucket...
     FOREACH_FACE(f) {
       switch (signalState[f]) {
@@ -84,15 +81,17 @@ void loop() {
           break;
       }
     }
-
   }
 
-
+  //the full data assembly being sent off
+  //for more info on how this works, check out the Tutorial Safely Sending Signals Part 2!
   FOREACH_FACE(f) {
     byte sendData = (ballState[f] << 5) + (signalState[f] << 3) + (gravityState[f]);
     setValueSentOnFace(sendData, f);
   }
 }
+
+//SIGNAL STATES ------------------------
 
 void blankLoop(byte face) {
   //listen to hear SENDING
@@ -174,41 +173,6 @@ void receivedLoop(byte face) {
   }
 }
 
-//DISPLAY LOOP --------------------------------------------------
-
-//void displayLoop() {
-//
-//  //This is where we're going to control all visuals I think...maybe that's a terrible idea?
-//
-//  if (blinkRole == BUCKET) {
-//    setColor(GREEN);
-//  }
-//
-//  if (blinkRole == WALL) {
-//
-//
-//    //this is for bugfixing too:
-//    //    setColorOnFace(WHITE, bottomFace);
-//
-//  }
-//
-//  //for Debugging purposes I don't want to get rid of this just yet:
-//  //  if (blinkRole != BUCKET) {
-//  //    FOREACH_FACE(f) {
-//  //      if (signalState[f] == BLANK) {
-//  //        //        setColorOnFace(OFF, f);
-//  //      }
-//  //      if (signalState[f] == SENDING) {
-//  //        setColorOnFace(RED, f);
-//  //      }
-//  //      if (signalState[f] == RECEIVED) {
-//  //        setColorOnFace(BLUE, f);
-//  //      }
-//  //    }
-//  //  }
-//
-//}
-
 //WALL -----------------------------------------------
 void wallLoop() {
 
@@ -246,25 +210,22 @@ void wallLoop() {
   if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
     if (buttonSingleClicked()) {
       bBallFalling = true;
-    } else if (!isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) {
-      //      bBallFalling = false;
-    }
+      startingFace = (bottomFace + 3) % 6; 
+    } 
   }
   //otherwise we out here listening for anyone saying ball
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {
       if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
         bBallFalling = true;
+        startingFace = f;
       }
     }
-
   }
 
   if (bBallFalling == true) {
     ballLogic();
   }
-
-
 
 }
 
@@ -313,18 +274,6 @@ void switcherLoop() {
 
 void ballLogic () {
 
-  byte startingFace;
-
-  startingFace = (bottomFace + 3) % 6;
-
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
-        startingFace = f;
-      }
-    }
-  }
-
   if (ballDropTimer.isExpired()) {
 
     if (wallRole == FUNNEL) {
@@ -368,6 +317,8 @@ void bucketLoop() {
     blinkRole = GRAVITY;
     bChangeRole = false;
   }
+
+  setColor(GREEN);
 
   FOREACH_FACE(f) {
     signalState[f] = IM_BUCKET;
@@ -434,12 +385,11 @@ void gravityLoop() {
         gravityState[f] = RIGHT_UP;
       }
       if (f == (bFace + 5) % 6) {
-        gravityState[f] = BUCKET_RIGHT; //special valye just for our bucket friends
+        gravityState[f] = BUCKET_RIGHT; //special value just for our bucket friends
       }
     }
   }
-
-  setWallRole();
+  
 }
 
 bool isBucket (byte face) {
@@ -516,14 +466,16 @@ void setWallRole() {
 
 }
 
+//and this is all that bit stuff that allows all the signals to be safely sent!
+
 byte getGravityState(byte data) {
-  return (data & 7); //returns bits D, E, and F...I think?
+  return (data & 7); //returns bits D, E, and F
 }
 
 byte getSignalState(byte data) {
-  return ((data >> 3) & 3); //returns bits B and C...hopefully?
+  return ((data >> 3) & 3); //returns bits B and C
 }
 
 byte getBallState(byte data) {
-  return ((data >> 5) & 1); //returns bit A...hopefully?
+  return ((data >> 5) & 1); //returns bit A
 }
