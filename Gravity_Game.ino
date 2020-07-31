@@ -4,21 +4,38 @@
 enum blinkRoles {WALL, GRAVITY, BUCKET};
 byte blinkRole = WALL;
 
-enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, NOTHING};
-byte gravityState[6] = {NOTHING, NOTHING, NOTHING, NOTHING, NOTHING, NOTHING};
+enum wallRoles {FUNNEL, GO_LEFT, GO_RIGHT, SWITCHER};
+byte wallRole = FUNNEL;
+
+enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT};
+byte gravityState[6] = {TOP, TOP, TOP, TOP, TOP, TOP};
 
 enum signalStates {BLANK, SENDING, RECEIVED, IM_BUCKET};
 byte signalState[6] = {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK};
 
+enum ballStates {BALL, NO_BALL};
+byte ballState[6] = {NO_BALL, NO_BALL, NO_BALL, NO_BALL, NO_BALL, NO_BALL};
+
 bool bChangeRole = false;
 bool bLongPress = false;
 
+bool bChangeWallRole = false;
+bool bDoubleClick = false;
+
 byte bottomFace;
+
+#define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
+#define WALLBLUE makeColorHSB(200, 255, 230) //more like purple
+#define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
 
 
 //GRAVITY
 Timer gravityPulseTimer;
 #define GRAVITY_PULSE 50
+
+//BALL
+Timer ballDropTimer;
+#define BALL_PULSE 1000
 
 byte gravityFace;
 
@@ -30,6 +47,8 @@ void setup() {
   // put your setup code here, to run once:
 
   gravityPulseTimer.set(GRAVITY_PULSE);
+
+  ballDropTimer.set(BALL_PULSE);
 
 }
 
@@ -58,7 +77,7 @@ void loop() {
 
 
   FOREACH_FACE(f) {
-    byte sendData = (signalState[f] << 3) + (gravityState[f]);
+    byte sendData = (ballState[f] << 5) + (signalState[f] << 3) + (gravityState[f]);
     setValueSentOnFace(sendData, f);
   }
 }
@@ -70,7 +89,7 @@ void blankLoop(byte face) {
   if (!isValueReceivedOnFaceExpired(face)) {
 
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
-      
+
       //Guess what? I heard sending
 
       //2. arrange my own gravity state to match
@@ -105,12 +124,10 @@ void blankLoop(byte face) {
           }
         }
       }
-      
+
     }
   }
 }
-
-
 
 
 void sendingLoop(byte face) {
@@ -124,10 +141,8 @@ void sendingLoop(byte face) {
       //if the neighbor has already received a message, stop sending and turn to blank.
       signalState[face] = RECEIVED;
     }
-    //    if (blinkRole == GRAVITY) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
       signalState[face] = BLANK;
-      //      }
     }
   } else {
     signalState[face] = BLANK;
@@ -158,8 +173,11 @@ void displayLoop() {
   }
 
   if (blinkRole == WALL) {
-    setColor(YELLOW);
-    setColorOnFace(WHITE, bottomFace);
+    setColor(dim(WHITE, 60));
+
+    //this is for bugfixing too:
+    //    setColorOnFace(WHITE, bottomFace);
+
   }
 
   //for Debugging purposes I don't want to get rid of this just yet:
@@ -187,6 +205,8 @@ void wallLoop() {
     bChangeRole = false;
   }
 
+  setWallRole();
+
   FOREACH_FACE(f) {
     if (f == bottomFace) {
       gravityState[f] = BOTTOM;
@@ -208,9 +228,55 @@ void wallLoop() {
     }
   }
 
+}
+
+void funnelLoop() {
+
+  if (bChangeWallRole) {
+    wallRole = GO_LEFT;
+    bChangeWallRole = false;
+  }
+
+  setColorOnFace(dim(WHITE, 200), bottomFace);
 
 }
 
+void goLeftLoop() {
+
+  if (bChangeWallRole) {
+    wallRole = GO_RIGHT;
+    bChangeWallRole = false;
+  }
+
+  //  setColorOnFace(WALLRED, (bottomFace + 4) % 6);
+  setColorOnFace(WALLRED, (bottomFace + 1) % 6);
+
+}
+void goRightLoop() {
+
+  if (bChangeWallRole) {
+    wallRole = SWITCHER;
+    bChangeWallRole = false;
+  }
+  //  setColorOnFace(WALLBLUE, (bottomFace + 2) % 6);
+  setColorOnFace(WALLBLUE, (bottomFace + 5) % 6);
+}
+
+void switcherLoop() {
+
+  if (bChangeWallRole) {
+    wallRole = FUNNEL;
+    bChangeWallRole = false;
+  }
+
+  setColorOnFace(WALLPURPLE, (bottomFace + 4) % 6);
+  setColorOnFace(WALLPURPLE, (bottomFace + 1) % 6);
+}
+
+void ballLogic(){
+  
+  
+  }
 
 //BUCKET -------------------------
 void bucketLoop() {
@@ -221,7 +287,21 @@ void bucketLoop() {
 
   FOREACH_FACE(f) {
     signalState[f] = IM_BUCKET;
+
+    if (!isValueReceivedOnFaceExpired(f)) {
+      if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_LEFT) {
+
+        setColor(dim(WALLBLUE, 100));
+      }
+      if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_RIGHT) {
+
+        setColor(dim(WALLRED, 100));
+      }
+    }
+
   }
+
+
 
 }
 
@@ -244,7 +324,7 @@ void gravityLoop() {
       byte bucketNeighbor = (f + 2) % 6;
       if (isBucket(bucketNeighbor)) {
         bFace = (f + 1) % 6;
-        setColor(BLUE);
+        setColor(dim(BLUE, 180));
         setColorOnFace(WHITE, bFace); //this face is the "bottom", the direction of gravity
       }
     }
@@ -258,7 +338,7 @@ void gravityLoop() {
         gravityState[f] = BOTTOM;
       }
       if (f == (bFace + 1) % 6) {
-        gravityState[f] = LEFT_DOWN;
+        gravityState[f] = BUCKET_LEFT; //special value just for our bucket friends
       }
       if (f == (bFace + 2) % 6) {
         gravityState[f] = LEFT_UP;
@@ -270,10 +350,12 @@ void gravityLoop() {
         gravityState[f] = RIGHT_UP;
       }
       if (f == (bFace + 5) % 6) {
-        gravityState[f] = RIGHT_DOWN;
+        gravityState[f] = BUCKET_RIGHT; //special valye just for our bucket friends
       }
     }
   }
+
+  setWallRole();
 }
 
 bool isBucket (byte face) {
@@ -291,6 +373,7 @@ bool isBucket (byte face) {
 
 //------------------------------------------
 
+//this is just where we set the roles and that fun stuff
 void setRole() {
   if (hasWoken()) {
     bLongPress = false;
@@ -322,8 +405,31 @@ void setRole() {
 
   if (bLongPress) {
     //transition color
-    setColor(MAGENTA);
+    setColor(WHITE);
   }
+}
+
+void setWallRole() {
+
+  if (buttonDoubleClicked()) {
+    bChangeWallRole = true;
+  }
+
+  switch (wallRole) {
+    case FUNNEL:
+      funnelLoop();
+      break;
+    case GO_LEFT:
+      goLeftLoop();
+      break;
+    case GO_RIGHT:
+      goRightLoop();
+      break;
+    case SWITCHER:
+      switcherLoop();
+      break;
+  }
+
 }
 
 byte getGravityState(byte data) {
@@ -332,4 +438,9 @@ byte getGravityState(byte data) {
 
 byte getSignalState(byte data) {
   return ((data >> 3) & 3); //returns bits B and C...hopefully?
+}
+
+
+byte getBallState(byte data) {
+  return ((data >> 5) & 1); //returns bit A...hopefully?
 }
