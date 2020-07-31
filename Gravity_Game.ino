@@ -353,11 +353,11 @@ void bucketLoop() {
     if (!isValueReceivedOnFaceExpired(f)) { //I have a neighbor
       if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_LEFT) {
 
-        setColor(dim(WALLBLUE, 100));
+//        setColor(dim(WALLBLUE, 100)); //we're taking this out for now, probably don't need it
       }
       if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_RIGHT) {
 
-        setColor(dim(WALLRED, 100));
+//        setColor(dim(WALLRED, 100)); //we're taking this out for now, probably don't need it
       }
     }
 
