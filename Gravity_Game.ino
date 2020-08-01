@@ -493,6 +493,13 @@ void bucketLoop() {
         bottomFace = (f + 4) % 6;
       }
     }
+  }
+
+  if(buttonDoubleClicked()){
+    marbleScore = 0;
+    }
+
+  FOREACH_FACE(f){
     if (f <= marbleScore) {
       setColorOnFace(GREEN, ((bottomFace + f) % 6));
     }
