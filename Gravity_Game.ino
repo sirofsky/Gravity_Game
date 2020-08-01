@@ -7,7 +7,7 @@ byte blinkRole = WALL;
 enum wallRoles {FUNNEL, GO_LEFT, GO_RIGHT, SWITCHER, SPLITTER};
 byte wallRole = FUNNEL;
 
-enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT};
+enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT}; 
 byte gravityState[6] = {TOP, TOP, TOP, TOP, TOP, TOP};
 
 enum signalStates {BLANK, SENDING, RECEIVED, IM_BUCKET};
@@ -197,9 +197,9 @@ void wallLoop() {
 
   bool isGravity;
 
-  setColor(dim(WHITE, 60));
 
-  setWallRole();
+
+    setColor(dim(WHITE, 40));
 
   FOREACH_FACE(f) {
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
@@ -213,6 +213,8 @@ void wallLoop() {
       wallLoopPart2();
     }
   }
+
+  setWallRole();
 
   if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
     if (buttonSingleClicked()) {
@@ -475,8 +477,8 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
-  setColor(dim(BLUE, 180));
-  setColorOnFace(WHITE, bFace);
+  setColor(dim(GREEN, 100));
+//  setColorOnFace(WHITE, bFace);
 
   if (gravityPulseTimer.isExpired()) {
     gravityPulseTimer.set(GRAVITY_PULSE);
