@@ -7,7 +7,7 @@ byte blinkRole = WALL;
 enum wallRoles {FUNNEL, GO_LEFT, GO_RIGHT, SWITCHER, SPLITTER};
 byte wallRole = FUNNEL;
 
-enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT}; 
+enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT};
 byte gravityState[6] = {TOP, TOP, TOP, TOP, TOP, TOP};
 
 enum signalStates {BLANK, SENDING, RECEIVED, IM_BUCKET};
@@ -38,6 +38,9 @@ Timer gravityPulseTimer;
 byte gravityFace;
 byte bFace;
 
+//BUCKET
+Timer marbleScoreTimer;
+
 //BALL (some variables needed to get the ball rolling)
 Timer ballDropTimer;
 #define BALL_PULSE 100
@@ -65,6 +68,8 @@ void setup() {
   gravityPulseTimer.set(GRAVITY_PULSE);
 
   ballDropTimer.set(BALL_PULSE);
+
+  marbleScoreTimer.set(0);
 
 }
 
@@ -199,7 +204,7 @@ void wallLoop() {
 
 
 
-    setColor(dim(WHITE, 40));
+  setColor(dim(WHITE, 40));
 
   FOREACH_FACE(f) {
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
@@ -395,12 +400,10 @@ void ballLogic () {
           goLeft = true;
           ballFell = true;
         }
-
       }
-
     }
 
-   if (wallRole == SPLITTER) {
+    if (wallRole == SPLITTER) {
       bSplitter = true;
       if (stepCount == 1) {
         ballPos = startingFace;
@@ -424,11 +427,11 @@ void ballLogic () {
     //we don't want to see the first frame of the ball dropping
     if (stepCount > 1) {
       setColorOnFace(YELLOW, ballPos);
-      if(bSplitter == true){
-        if(stepCount == 3){
+      if (bSplitter == true) {
+        if (stepCount == 3) {
           setColorOnFace(YELLOW, (ballPos + 4) % 6);
-          }
         }
+      }
     }
 
     if (ballFell == true) {
@@ -449,25 +452,54 @@ void bucketLoop() {
     bChangeRole = false;
   }
 
-  setColor(GREEN);
+  byte marbleScore;
+
+  bool addScore;
+
+
+
+  setColor(dim(GREEN, 100));
 
   FOREACH_FACE(f) {
+
     signalState[f] = IM_BUCKET;
 
-    if (!isValueReceivedOnFaceExpired(f)) { //I have a neighbor
-      if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_LEFT) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
 
-        //        setColor(dim(WALLBLUE, 100)); //we're taking this out for now, probably don't need it
+        if (marbleScoreTimer.isExpired()) {
+          marbleScore = (marbleScore + 1) % 6;
+          marbleScoreTimer.set(200); //not super elegant, but this way it only counts a ball once
+        }
       }
-      if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_RIGHT) {
 
-        //        setColor(dim(WALLRED, 100)); //we're taking this out for now, probably don't need it
+      //now we need to find out which face is on the bottom to get our bearings.
+      if (getGravityState(getLastValueReceivedOnFace(f)) == BOTTOM) {
+        bottomFace = (f + 3) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_DOWN) {
+        bottomFace = (f + 2) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_UP) {
+        bottomFace = (f + 1) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(f)) == TOP) {
+        bottomFace = f;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_UP) {
+        bottomFace = (f + 5) % 6;
+      }
+      if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_DOWN) {
+        bottomFace = (f + 4) % 6;
       }
     }
-
+    if (f <= marbleScore) {
+      setColorOnFace(GREEN, ((bottomFace + f) % 6));
+    }
   }
 
 }
+
 
 //GRAVITY -------------------------------
 void gravityLoop() {
@@ -478,7 +510,7 @@ void gravityLoop() {
   }
 
   setColor(dim(GREEN, 100));
-//  setColorOnFace(WHITE, bFace);
+  //  setColorOnFace(WHITE, bFace);
 
   if (gravityPulseTimer.isExpired()) {
     gravityPulseTimer.set(GRAVITY_PULSE);
@@ -563,6 +595,7 @@ void setWallRole() {
 
   if (buttonDoubleClicked()) {
     bChangeWallRole = true;
+    bSplitter = false;
   }
 
   switch (wallRole) {
