@@ -4,7 +4,7 @@
 enum blinkRoles {WALL, GRAVITY, BUCKET};
 byte blinkRole = WALL;
 
-enum wallRoles {FUNNEL, GO_LEFT, GO_RIGHT, SWITCHER};
+enum wallRoles {FUNNEL, GO_LEFT, GO_RIGHT, SWITCHER, SPLITTER};
 byte wallRole = FUNNEL;
 
 enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT};
@@ -50,6 +50,12 @@ byte ballPos;
 byte stepCount = 0;
 
 bool ballFell = false;
+
+//SWITCHER
+bool goLeft;
+
+//SPLITTER
+bool bSplitter;
 
 
 void setup() {
@@ -177,9 +183,9 @@ void receivedLoop(byte face) {
   }
 }
 
-void imBucketLoop(byte face){
+void imBucketLoop(byte face) {
   signalState[face] = BLANK;
-  }
+}
 
 //WALL -----------------------------------------------
 void wallLoop() {
@@ -291,20 +297,39 @@ void goRightLoop() {
 void switcherLoop() {
 
   if (bChangeWallRole) {
+    wallRole = SPLITTER;
+    bChangeWallRole = false;
+  }
+
+  if (goLeft == true) {
+    setColorOnFace(WALLPURPLE, (bottomFace + 4) % 6);
+    setColorOnFace(WALLPURPLE, (bottomFace + 1) % 6);
+  } else {
+    setColorOnFace(WALLPURPLE, (bottomFace + 2) % 6);
+    setColorOnFace(WALLPURPLE, (bottomFace + 5) % 6);
+  }
+
+}
+
+void splitterLoop() {
+
+  if (bChangeWallRole) {
     wallRole = FUNNEL;
     bChangeWallRole = false;
   }
 
-  setColorOnFace(WALLPURPLE, (bottomFace + 4) % 6);
-  setColorOnFace(WALLPURPLE, (bottomFace + 1) % 6);
+  setColorOnFace(WALLRED, (bottomFace + 1) % 6);
+  setColorOnFace(WALLBLUE, (bottomFace + 5) % 6);
 }
+
+
 
 void ballLogic () {
 
   if (ballDropTimer.isExpired()) {
 
     if (wallRole == FUNNEL) {
-
+      bSplitter = false;
       if (stepCount == 1) {
         ballPos = startingFace;
       }
@@ -316,6 +341,78 @@ void ballLogic () {
         ballFell = true;
       }
     }
+    if (wallRole == GO_LEFT) {
+
+      if (stepCount == 1) {
+        ballPos = startingFace;
+      }
+      if (stepCount == 2) {
+        ballPos = (bottomFace + 1) % 6;
+        ballState[ballPos] = BALL;
+      }
+      if (stepCount == 3) {
+        ballFell = true;
+      }
+    }
+    if (wallRole == GO_RIGHT) {
+
+      if (stepCount == 1) {
+        ballPos = startingFace;
+      }
+      if (stepCount == 2) {
+        ballPos = (bottomFace + 5) % 6;
+        ballState[ballPos] = BALL;
+      }
+      if (stepCount == 3) {
+        ballFell = true;
+      }
+    }
+    if (wallRole == SWITCHER) {
+
+      if (goLeft == true) {
+        if (stepCount == 1) {
+          ballPos = startingFace;
+        }
+        if (stepCount == 2) {
+          ballPos = (bottomFace + 1) % 6;
+          ballState[ballPos] = BALL;
+        }
+        if (stepCount == 3) {
+          goLeft = false;
+          ballFell = true;
+        }
+      } else {
+        if (stepCount == 1) {
+          ballPos = startingFace;
+        }
+        if (stepCount == 2) {
+          ballPos = (bottomFace + 5) % 6;
+          ballState[ballPos] = BALL;
+        }
+        if (stepCount == 3) {
+          goLeft = true;
+          ballFell = true;
+        }
+
+      }
+
+    }
+
+   if (wallRole == SPLITTER) {
+      bSplitter = true;
+      if (stepCount == 1) {
+        ballPos = startingFace;
+      }
+      if (stepCount == 2) {
+        ballPos = (bottomFace + 1) % 6;
+        ballState[ballPos] = BALL;
+        ballState[(ballPos + 4) % 6] = BALL;
+      }
+      if (stepCount == 3) {
+        ballFell = true;
+        ballState[(ballPos + 4) % 6] = NO_BALL;
+      }
+    }
 
     ballDropTimer.set(BALL_PULSE);
     stepCount = stepCount + 1;
@@ -325,6 +422,11 @@ void ballLogic () {
     //we don't want to see the first frame of the ball dropping
     if (stepCount > 1) {
       setColorOnFace(YELLOW, ballPos);
+      if(bSplitter == true){
+        if(stepCount == 3){
+          setColorOnFace(YELLOW, (ballPos + 4) % 6);
+          }
+        }
     }
 
     if (ballFell == true) {
@@ -353,11 +455,11 @@ void bucketLoop() {
     if (!isValueReceivedOnFaceExpired(f)) { //I have a neighbor
       if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_LEFT) {
 
-//        setColor(dim(WALLBLUE, 100)); //we're taking this out for now, probably don't need it
+        //        setColor(dim(WALLBLUE, 100)); //we're taking this out for now, probably don't need it
       }
       if (getGravityState(getLastValueReceivedOnFace(f)) == BUCKET_RIGHT) {
 
-//        setColor(dim(WALLRED, 100)); //we're taking this out for now, probably don't need it
+        //        setColor(dim(WALLRED, 100)); //we're taking this out for now, probably don't need it
       }
     }
 
@@ -473,6 +575,9 @@ void setWallRole() {
       break;
     case SWITCHER:
       switcherLoop();
+      break;
+    case SPLITTER:
+      splitterLoop();
       break;
   }
 
