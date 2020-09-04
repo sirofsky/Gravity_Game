@@ -1,19 +1,59 @@
-//GRAVITY TEST (AKA BLINK-O)
+//GRAVITY GAME AKA TREASURE TUMBLE
+
+//Car Salesman slaps code
+//"You could fit so much incoherent code in this badboy"
+
 //By Jacob Surovsky
 
-enum blinkRoles {WALL, GRAVITY, BUCKET};
+enum blinkRoles
+{
+  WALL,
+  BUCKET
+};
+
 byte blinkRole = WALL;
 
-enum wallRoles {FUNNEL, GO_LEFT, GO_RIGHT, SWITCHER, SPLITTER};
+enum wallRoles
+{
+  FUNNEL,
+  GO_LEFT,
+  GO_RIGHT,
+  SWITCHER,
+  SPLITTER,
+  DEATHTRAP
+};
+
 byte wallRole = FUNNEL;
 
-enum gravityStates {LEFT_DOWN, LEFT_UP, TOP, RIGHT_UP, RIGHT_DOWN, BOTTOM, BUCKET_LEFT, BUCKET_RIGHT};
+enum gravityStates
+{
+  LEFT_DOWN,
+  LEFT_UP, TOP,
+  RIGHT_UP,
+  RIGHT_DOWN,
+  BOTTOM,
+  BUCKET_LEFT,
+  BUCKET_RIGHT
+};
+
 byte gravityState[6] = {TOP, TOP, TOP, TOP, TOP, TOP};
 
-enum signalStates {BLANK, SENDING, RECEIVED, IM_BUCKET};
+enum signalStates
+{
+  BLANK,
+  SENDING,
+  RECEIVED,
+  IM_BUCKET
+};
+
 byte signalState[6] = {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK};
 
-enum ballStates {BALL, NO_BALL};
+enum ballStates
+{
+  BALL,
+  NO_BALL
+};
+
 byte ballState[6] = {NO_BALL, NO_BALL, NO_BALL, NO_BALL, NO_BALL, NO_BALL};
 
 bool bChangeRole = false;
@@ -26,10 +66,14 @@ byte bottomFace;
 
 #define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
 #define WALLBLUE makeColorHSB(200, 255, 230) //more like purple
+#define PURPLE makeColorHSB(200, 255, 230)
 #define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
 
-#define BALLCOLOR makeColorRGB(255, 255, 100)
+#define BALL_COLOR makeColorHSB(75, 255, 230)
 
+#define BG_COLOR makeColorHSB(38, 160, 255) //a temple tan ideally
+
+//#define BG_COLOR makeColorHSB(180, 130, 255) //a temple tan ideally
 
 //GRAVITY
 Timer gravityPulseTimer;
@@ -43,7 +87,7 @@ Timer marbleScoreTimer;
 
 //BALL (some variables needed to get the ball rolling)
 Timer ballDropTimer;
-#define BALL_PULSE 100
+#define BALL_PULSE 150
 
 bool bBallFalling = false;
 
@@ -65,11 +109,13 @@ void setup() {
   // put your setup code here, to run once:
 
   //gotta get some timers set here
-  gravityPulseTimer.set(GRAVITY_PULSE);
+  //  gravityPulseTimer.set(GRAVITY_PULSE);
 
-  ballDropTimer.set(BALL_PULSE);
+  //  ballDropTimer.set(BALL_PULSE);
 
   marbleScoreTimer.set(0);
+
+  randomize();
 
 }
 
@@ -202,10 +248,6 @@ void wallLoop() {
 
   bool isGravity;
 
-
-
-  setColor(dim(WHITE, 40));
-
   FOREACH_FACE(f) {
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
       byte bucketNeighbor = (f + 2) % 6; //and what about their neighbor?
@@ -215,11 +257,17 @@ void wallLoop() {
         gravityLoop();
       }
     } else {
-      wallLoopPart2();
+      setWallOrientation();
     }
   }
 
+  //here's our background color drawing
+
+  setColor(dim(BG_COLOR, 120));
+  setColorOnFace(dim(BG_COLOR, 45), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 45), (bottomFace + 4) % 6);
   setWallRole();
+
 
   if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
     if (buttonSingleClicked()) {
@@ -243,7 +291,7 @@ void wallLoop() {
 
 }
 
-void wallLoopPart2() {
+void setWallOrientation() {
 
   FOREACH_FACE(f) {
     if (f == bottomFace) {
@@ -269,74 +317,60 @@ void wallLoopPart2() {
 
 }
 
+
+//this is where we draw the graphics for each temple pattern
+
 void funnelLoop() {
 
-  if (bChangeWallRole) {
-    wallRole = GO_LEFT;
-    bChangeWallRole = false;
-  }
-
-  setColorOnFace(dim(WHITE, 200), bottomFace);
+  setColorOnFace(dim(BG_COLOR, 200), bottomFace);
 
 }
 
 void goLeftLoop() {
 
-  if (bChangeWallRole) {
-    wallRole = GO_RIGHT;
-    bChangeWallRole = false;
-  }
-
-  //  setColorOnFace(WALLRED, (bottomFace + 4) % 6);
-  setColorOnFace(WALLRED, (bottomFace + 1) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 1) % 6);
 
 }
 void goRightLoop() {
 
-  if (bChangeWallRole) {
-    wallRole = SWITCHER;
-    bChangeWallRole = false;
-  }
-  //  setColorOnFace(WALLBLUE, (bottomFace + 2) % 6);
-  setColorOnFace(WALLBLUE, (bottomFace + 5) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 5) % 6);
 }
 
 void switcherLoop() {
 
-  if (bChangeWallRole) {
-    wallRole = SPLITTER;
-    bChangeWallRole = false;
-  }
-
   if (goLeft == true) {
-    setColorOnFace(WALLPURPLE, (bottomFace + 4) % 6);
-    setColorOnFace(WALLPURPLE, (bottomFace + 1) % 6);
+    setColorOnFace(PURPLE, (bottomFace + 4) % 6);
+    setColorOnFace(PURPLE, (bottomFace + 1) % 6);
   } else {
-    setColorOnFace(WALLPURPLE, (bottomFace + 2) % 6);
-    setColorOnFace(WALLPURPLE, (bottomFace + 5) % 6);
+    setColorOnFace(PURPLE, (bottomFace + 2) % 6);
+    setColorOnFace(PURPLE, (bottomFace + 5) % 6);
   }
 
 }
 
 void splitterLoop() {
 
-  if (bChangeWallRole) {
-    wallRole = FUNNEL;
-    bChangeWallRole = false;
-  }
-
-  setColorOnFace(WALLRED, (bottomFace + 1) % 6);
-  setColorOnFace(WALLBLUE, (bottomFace + 5) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 1) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 5) % 6);
 }
 
+void deathtrapLoop() {
+  setColorOnFace(RED, bottomFace);
+  setColorOnFace(RED, (bottomFace + 2) % 6);
+  setColorOnFace(RED, (bottomFace + 4) % 6);
 
+}
+
+//this is where the ball figures out where to go for each temple pattern
 
 void ballLogic () {
+
+  bSplitter = false;
 
   if (ballDropTimer.isExpired()) {
 
     if (wallRole == FUNNEL) {
-      bSplitter = false;
+
       if (stepCount == 1) {
         ballPos = startingFace;
       }
@@ -377,6 +411,7 @@ void ballLogic () {
     if (wallRole == SWITCHER) {
 
       if (goLeft == true) {
+
         if (stepCount == 1) {
           ballPos = startingFace;
         }
@@ -389,6 +424,7 @@ void ballLogic () {
           ballFell = true;
         }
       } else {
+
         if (stepCount == 1) {
           ballPos = startingFace;
         }
@@ -405,6 +441,7 @@ void ballLogic () {
 
     if (wallRole == SPLITTER) {
       bSplitter = true;
+
       if (stepCount == 1) {
         ballPos = startingFace;
       }
@@ -419,6 +456,16 @@ void ballLogic () {
       }
     }
 
+    if (wallRole == DEATHTRAP) {
+
+      if (stepCount == 1) {
+        ballPos = startingFace;
+      }
+      if (stepCount == 2) {
+        ballFell = true;
+      }
+    }
+
     ballDropTimer.set(BALL_PULSE);
     stepCount = stepCount + 1;
 
@@ -426,10 +473,10 @@ void ballLogic () {
 
     //we don't want to see the first frame of the ball dropping
     if (stepCount > 1) {
-      setColorOnFace(YELLOW, ballPos);
+      setColorOnFace(BALL_COLOR, ballPos);
       if (bSplitter == true) {
         if (stepCount == 3) {
-          setColorOnFace(YELLOW, (ballPos + 4) % 6);
+          setColorOnFace(BALL_COLOR, (ballPos + 4) % 6);
         }
       }
     }
@@ -456,8 +503,6 @@ void bucketLoop() {
 
   bool addScore;
 
-
-
   setColor(dim(GREEN, 100));
 
   FOREACH_FACE(f) {
@@ -469,7 +514,7 @@ void bucketLoop() {
 
         if (marbleScoreTimer.isExpired()) {
           marbleScore = (marbleScore + 1) % 6;
-          marbleScoreTimer.set(200); //not super elegant, but this way it only counts a ball once
+          marbleScoreTimer.set(BALL_PULSE * 2); //not super elegant, but this way it only counts a ball once
         }
       }
 
@@ -495,11 +540,11 @@ void bucketLoop() {
     }
   }
 
-  if(buttonDoubleClicked()){
+  if (buttonDoubleClicked()) {
     marbleScore = 0;
-    }
+  }
 
-  FOREACH_FACE(f){
+  FOREACH_FACE(f) {
     if (f <= marbleScore) {
       setColorOnFace(GREEN, ((bottomFace + f) % 6));
     }
@@ -511,13 +556,14 @@ void bucketLoop() {
 //GRAVITY -------------------------------
 void gravityLoop() {
 
+  //I'm the face between the two buckets
+
   if (bChangeRole) {
     blinkRole = WALL;
     bChangeRole = false;
   }
 
-  setColor(dim(GREEN, 100));
-  //  setColorOnFace(WHITE, bFace);
+  wallRole = SWITCHER;
 
   if (gravityPulseTimer.isExpired()) {
     gravityPulseTimer.set(GRAVITY_PULSE);
@@ -587,9 +633,6 @@ void setRole() {
     case BUCKET:
       bucketLoop();
       break;
-      //    case GRAVITY:
-      //      gravityLoop();
-      //      break;
   }
 
   if (bLongPress) {
@@ -601,7 +644,22 @@ void setRole() {
 void setWallRole() {
 
   if (buttonDoubleClicked()) {
-    bChangeWallRole = true;
+
+    setColor(RED);
+    wallRole = (wallRole + random(4) + 1) % 6;
+
+
+    bSplitter = false;
+  }
+
+  if (buttonMultiClicked()) {
+    if (buttonClickCount() == 3) {
+      wallRole = wallRole + 1;
+      if (wallRole == 6) {
+        wallRole = 0;
+      }
+    }
+
     bSplitter = false;
   }
 
@@ -620,6 +678,9 @@ void setWallRole() {
       break;
     case SPLITTER:
       splitterLoop();
+      break;
+    case DEATHTRAP:
+      deathtrapLoop();
       break;
   }
 
