@@ -62,6 +62,8 @@ bool bLongPress = false;
 bool bChangeWallRole = false;
 bool bDoubleClick = false;
 
+bool treasurePrimed;
+
 byte bottomFace;
 
 #define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
@@ -108,17 +110,7 @@ bool bSplitter;
 
 
 void setup() {
-  // put your setup code here, to run once:
-
-  //gotta get some timers set here
-  //  gravityPulseTimer.set(GRAVITY_PULSE);
-
-  //  ballDropTimer.set(BALL_PULSE);
-
-  marbleScoreTimer.set(0);
-
   randomize();
-
 }
 
 void loop() {
@@ -156,6 +148,8 @@ void loop() {
 
 //SIGNAL STATES ------------------------
 
+byte sendingCounter = 0;
+
 void blankLoop(byte face) {
   //listen to hear SENDING
   //when I hear sending, I want to do some things:
@@ -163,8 +157,20 @@ void blankLoop(byte face) {
   if (!isValueReceivedOnFaceExpired(face)) {
 
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
-
       //Guess what? I heard sending
+
+      sendingCounter = sendingCounter + 1;
+      //this counter is so the treasure waits to drop until after the gravity state has been agreed upon
+
+      //This is where the treasure is allowed to fall
+
+      if (treasurePrimed == true) {
+        if (sendingCounter > 3) {
+          bBallFalling = true;
+          startingFace = (bottomFace + 3) % 6;
+          treasurePrimed = false;
+        }
+      }
 
       //2. arrange my own gravity state to match
       if (getGravityState(getLastValueReceivedOnFace(face)) == BOTTOM) {
@@ -248,7 +254,7 @@ void wallLoop() {
     bChangeRole = false;
   }
 
-  bool isGravity;
+  //  bool isGravity;
 
   FOREACH_FACE(f) {
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
@@ -256,9 +262,9 @@ void wallLoop() {
       if (isBucket(bucketNeighbor)) {
         bFace = (f + 1) % 6;
         bottomFace = bFace;
-        gravityLoop();
+        gravityLoop(); //I get to decide what direction gravity is for the entire game! Yippee!
       }
-    } else {
+    } else { //I'm a normal wall piece
       setWallOrientation();
     }
   }
@@ -268,16 +274,16 @@ void wallLoop() {
   setColorOnFace(dim(BG_COLOR, 200), (bottomFace + 2) % 6);
   setColorOnFace(dim(BG_COLOR, 200), (bottomFace + 4) % 6);
   setColorOnFace(dim(BG_COLOR, 200), bottomFace);
-//  setColor(makeColorHSB(50, 200, 150));
+  //  setColor(makeColorHSB(50, 200, 150));
   setWallRole();
 
 
-  if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
-    if (buttonSingleClicked()) {
-      bBallFalling = true;
-      startingFace = (bottomFace + 3) % 6;
-    }
-  }
+  //  if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
+  //    if (buttonSingleClicked()) {
+  //      bBallFalling = true;
+  //      startingFace = (bottomFace + 3) % 6;
+  //    }
+  //  }
   //otherwise we out here listening for anyone saying ball
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {
@@ -325,7 +331,7 @@ void setWallOrientation() {
 
 void funnelLoop() {
 
-  setColorOnFace(dim(BG_COLOR, 200), bottomFace);
+  //  setColorOnFace(dim(BG_COLOR, 200), bottomFace);
 
 }
 
@@ -452,7 +458,7 @@ void ballLogic () {
         ballPos = (bottomFace + 1) % 6;
         ballState[ballPos] = BALL;
         ballState[(ballPos + 4) % 6] = BALL;
-        
+
       }
       if (stepCount == 3) {
         ballFell = true;
@@ -505,7 +511,7 @@ void bucketLoop() {
     bChangeRole = false;
   }
 
-  
+
 
   bool addScore;
 
@@ -569,7 +575,7 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
-  wallRole = SWITCHER;
+  wallRole = SWITCHER; //this piece will always alternate between passing the treasure to either bucket
 
   if (gravityPulseTimer.isExpired()) {
     gravityPulseTimer.set(GRAVITY_PULSE);
@@ -649,14 +655,31 @@ void setRole() {
 
 void setWallRole() {
 
-  if (buttonDoubleClicked()) {
+  if (buttonSingleClicked()) { //prime a treasure piece to be dropped
 
-    setColor(RED);
+//    setColor(RED);
+//    wallRole = (wallRole + random(4) + 1) % 6;
+
+    treasurePrimed = true;
+    sendingCounter = 0;
+
+
+//    bSplitter = false;
+  }
+
+  if (treasurePrimed == true) {
+    setColorOnFace(BALL_COLOR, (bottomFace + 3) % 6);
+
+  }
+
+  if (buttonDoubleClicked()) { //switch the role randomly
+    setColor(BALL_COLOR); //I'd like to add a fun animation here.
     wallRole = (wallRole + random(4) + 1) % 6;
 
+     bSplitter = false;
 
-    bSplitter = false;
   }
+
 
   if (buttonMultiClicked()) {
     if (buttonClickCount() == 3) {
