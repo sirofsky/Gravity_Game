@@ -67,11 +67,13 @@ byte bottomFace;
 #define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
 #define WALLBLUE makeColorHSB(200, 255, 230) //more like purple
 #define PURPLE makeColorHSB(200, 255, 230)
+#define VINE_GREEN makeColorHSB(90, 225, 255) //might try H 95
+
 #define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
 
-#define BALL_COLOR makeColorHSB(75, 255, 230)
+#define BALL_COLOR makeColorHSB(25, 255, 240) //an orange like the sticker art
 
-#define BG_COLOR makeColorHSB(38, 160, 255) //a temple tan ideally
+#define BG_COLOR makeColorHSB(50, 200, 255) //a temple tan ideally
 
 //#define BG_COLOR makeColorHSB(180, 130, 255) //a temple tan ideally
 
@@ -262,10 +264,11 @@ void wallLoop() {
   }
 
   //here's our background color drawing
-
   setColor(dim(BG_COLOR, 120));
-  setColorOnFace(dim(BG_COLOR, 45), (bottomFace + 2) % 6);
-  setColorOnFace(dim(BG_COLOR, 45), (bottomFace + 4) % 6);
+  setColorOnFace(dim(BG_COLOR, 200), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 200), (bottomFace + 4) % 6);
+  setColorOnFace(dim(BG_COLOR, 200), bottomFace);
+//  setColor(makeColorHSB(50, 200, 150));
   setWallRole();
 
 
@@ -328,30 +331,30 @@ void funnelLoop() {
 
 void goLeftLoop() {
 
-  setColorOnFace(PURPLE, (bottomFace + 1) % 6);
+  setColorOnFace(VINE_GREEN, (bottomFace + 1) % 6);
 
 }
 void goRightLoop() {
 
-  setColorOnFace(PURPLE, (bottomFace + 5) % 6);
+  setColorOnFace(VINE_GREEN, (bottomFace + 5) % 6);
 }
 
 void switcherLoop() {
 
   if (goLeft == true) {
-    setColorOnFace(PURPLE, (bottomFace + 4) % 6);
-    setColorOnFace(PURPLE, (bottomFace + 1) % 6);
+    setColorOnFace(VINE_GREEN, (bottomFace + 4) % 6);
+    setColorOnFace(VINE_GREEN, (bottomFace + 1) % 6);
   } else {
-    setColorOnFace(PURPLE, (bottomFace + 2) % 6);
-    setColorOnFace(PURPLE, (bottomFace + 5) % 6);
+    setColorOnFace(VINE_GREEN, (bottomFace + 2) % 6);
+    setColorOnFace(VINE_GREEN, (bottomFace + 5) % 6);
   }
 
 }
 
 void splitterLoop() {
 
-  setColorOnFace(PURPLE, (bottomFace + 1) % 6);
-  setColorOnFace(PURPLE, (bottomFace + 5) % 6);
+  setColorOnFace(VINE_GREEN, (bottomFace + 1) % 6);
+  setColorOnFace(VINE_GREEN, (bottomFace + 5) % 6);
 }
 
 void deathtrapLoop() {
@@ -449,6 +452,7 @@ void ballLogic () {
         ballPos = (bottomFace + 1) % 6;
         ballState[ballPos] = BALL;
         ballState[(ballPos + 4) % 6] = BALL;
+        
       }
       if (stepCount == 3) {
         ballFell = true;
@@ -475,7 +479,7 @@ void ballLogic () {
     if (stepCount > 1) {
       setColorOnFace(BALL_COLOR, ballPos);
       if (bSplitter == true) {
-        if (stepCount == 3) {
+        if (stepCount == 2) {
           setColorOnFace(BALL_COLOR, (ballPos + 4) % 6);
         }
       }
@@ -492,6 +496,8 @@ void ballLogic () {
 
 }
 
+byte marbleScore = 0;
+
 //BUCKET -------------------------
 void bucketLoop() {
   if (bChangeRole) {
@@ -499,11 +505,11 @@ void bucketLoop() {
     bChangeRole = false;
   }
 
-  byte marbleScore;
+  
 
   bool addScore;
 
-  setColor(dim(GREEN, 100));
+  setColor(VINE_GREEN);
 
   FOREACH_FACE(f) {
 
@@ -546,7 +552,7 @@ void bucketLoop() {
 
   FOREACH_FACE(f) {
     if (f <= marbleScore) {
-      setColorOnFace(GREEN, ((bottomFace + f) % 6));
+      setColorOnFace(BALL_COLOR, ((bottomFace + f ) % 6));
     }
   }
 
