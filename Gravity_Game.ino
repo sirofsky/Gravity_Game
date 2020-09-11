@@ -15,12 +15,12 @@ byte blinkRole = WALL;
 
 enum wallRoles
 {
-  FUNNEL,
-  GO_LEFT,
-  GO_RIGHT,
-  SWITCHER,
+  GO_SIDE,
+  SPINNER,
   SPLITTER,
-  DEATHTRAP
+  DEATHTRAP,
+  FUNNEL,
+  SWITCHER
 };
 
 byte wallRole = FUNNEL;
@@ -67,17 +67,18 @@ bool treasurePrimed;
 byte bottomFace;
 
 #define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
-#define WALLBLUE makeColorHSB(200, 255, 230) //more like purple
 #define PURPLE makeColorHSB(200, 255, 230)
-#define VINE_GREEN makeColorHSB(90, 225, 255) //might try H 95
 
-#define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
 
-#define BALL_COLOR makeColorHSB(25, 255, 240) //an orange like the sticker art
+#define FEATURE_COLOR makeColorHSB(25, 255, 240) //orange
+
+//#define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
+
+#define BALL_COLOR makeColorHSB(90, 225, 255) //an emerald green
 
 #define BG_COLOR makeColorHSB(50, 200, 255) //a temple tan ideally
 
-//#define BG_COLOR makeColorHSB(180, 130, 255) //a temple tan ideally
+
 
 //GRAVITY
 Timer gravityPulseTimer;
@@ -270,11 +271,9 @@ void wallLoop() {
   }
 
   //here's our background color drawing
-  setColor(dim(BG_COLOR, 120));
-  setColorOnFace(dim(BG_COLOR, 200), (bottomFace + 2) % 6);
-  setColorOnFace(dim(BG_COLOR, 200), (bottomFace + 4) % 6);
-  setColorOnFace(dim(BG_COLOR, 200), bottomFace);
-  //  setColor(makeColorHSB(50, 200, 150));
+  setColor(dim(BG_COLOR, 160));
+  setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 4) % 6);
   setWallRole();
 
 
@@ -331,36 +330,62 @@ void setWallOrientation() {
 
 void funnelLoop() {
 
-  //  setColorOnFace(dim(BG_COLOR, 200), bottomFace);
+}
+
+bool fallDown;
+
+void goSideLoop() {
+
+  if ((bottomFace + 1) % 6 == 0 || (bottomFace + 5) % 6 == 0) {
+
+    setColorOnFace(FEATURE_COLOR, 0);
+    fallDown = false;
+  } else {
+    setColorOnFace(PURPLE, 0);
+    fallDown = true;
+  }
 
 }
 
-void goLeftLoop() {
+byte spinCount;
+byte fallFace;
 
-  setColorOnFace(VINE_GREEN, (bottomFace + 1) % 6);
+void spinnerLoop() {
 
-}
-void goRightLoop() {
+  setColorOnFace(FEATURE_COLOR, (spinCount) % 6);
+  setColorOnFace(FEATURE_COLOR, (spinCount + 3) % 6);
 
-  setColorOnFace(VINE_GREEN, (bottomFace + 5) % 6);
+  if (spinCount == bottomFace || (spinCount + 3) % 6 == bottomFace) {
+    fallFace = bottomFace;
+    setColorOnFace(PURPLE, (spinCount) % 6);
+    setColorOnFace(PURPLE, (spinCount + 3) % 6);
+  }
+
+  if (spinCount == (bottomFace + 1) % 6 || (spinCount + 3) % 6 == (bottomFace + 1) % 6) {
+    fallFace = (bottomFace + 1) % 6;
+  }
+
+  if (spinCount == (bottomFace + 5) % 6 || (spinCount + 3) % 6 == (bottomFace + 5) % 6) {
+    fallFace = (bottomFace + 5) % 6;
+  }
 }
 
 void switcherLoop() {
 
   if (goLeft == true) {
-    setColorOnFace(VINE_GREEN, (bottomFace + 4) % 6);
-    setColorOnFace(VINE_GREEN, (bottomFace + 1) % 6);
+    setColorOnFace(PURPLE, (bottomFace + 4) % 6);
+    setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
   } else {
-    setColorOnFace(VINE_GREEN, (bottomFace + 2) % 6);
-    setColorOnFace(VINE_GREEN, (bottomFace + 5) % 6);
+    setColorOnFace(PURPLE, (bottomFace + 2) % 6);
+    setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
   }
 
 }
 
 void splitterLoop() {
 
-  setColorOnFace(VINE_GREEN, (bottomFace + 1) % 6);
-  setColorOnFace(VINE_GREEN, (bottomFace + 5) % 6);
+  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
+  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
 }
 
 void deathtrapLoop() {
@@ -391,30 +416,41 @@ void ballLogic () {
         ballFell = true;
       }
     }
-    if (wallRole == GO_LEFT) {
+    if (wallRole == GO_SIDE) {
 
       if (stepCount == 1) {
         ballPos = startingFace;
       }
       if (stepCount == 2) {
-        ballPos = (bottomFace + 1) % 6;
+
+        if (fallDown == false) {
+          ballPos = 0;
+        } else if (fallDown == true) {
+          ballPos = bottomFace;
+        }
         ballState[ballPos] = BALL;
       }
       if (stepCount == 3) {
         ballFell = true;
       }
     }
-    if (wallRole == GO_RIGHT) {
+    if (wallRole == SPINNER) {
 
       if (stepCount == 1) {
         ballPos = startingFace;
       }
       if (stepCount == 2) {
-        ballPos = (bottomFace + 5) % 6;
+
+        ballPos = fallFace;
+
         ballState[ballPos] = BALL;
       }
       if (stepCount == 3) {
         ballFell = true;
+        spinCount = spinCount + 1;
+        if (spinCount == 3) {
+          spinCount = 0;
+        }
       }
     }
     if (wallRole == SWITCHER) {
@@ -515,7 +551,7 @@ void bucketLoop() {
 
   bool addScore;
 
-  setColor(VINE_GREEN);
+  setColor(FEATURE_COLOR);
 
   FOREACH_FACE(f) {
 
@@ -657,14 +693,14 @@ void setWallRole() {
 
   if (buttonSingleClicked()) { //prime a treasure piece to be dropped
 
-//    setColor(RED);
-//    wallRole = (wallRole + random(4) + 1) % 6;
+    //    setColor(RED);
+    //    wallRole = (wallRole + random(4) + 1) % 6;
 
     treasurePrimed = true;
     sendingCounter = 0;
 
 
-//    bSplitter = false;
+    //    bSplitter = false;
   }
 
   if (treasurePrimed == true) {
@@ -674,9 +710,10 @@ void setWallRole() {
 
   if (buttonDoubleClicked()) { //switch the role randomly
     setColor(BALL_COLOR); //I'd like to add a fun animation here.
-    wallRole = (wallRole + random(4) + 1) % 6;
 
-     bSplitter = false;
+    wallRole = (wallRole + random(2) + 1) % 4;
+
+    bSplitter = false;
 
   }
 
@@ -693,23 +730,23 @@ void setWallRole() {
   }
 
   switch (wallRole) {
-    case FUNNEL:
-      funnelLoop();
+    case GO_SIDE:
+      goSideLoop();
       break;
-    case GO_LEFT:
-      goLeftLoop();
-      break;
-    case GO_RIGHT:
-      goRightLoop();
-      break;
-    case SWITCHER:
-      switcherLoop();
+    case SPINNER:
+      spinnerLoop();
       break;
     case SPLITTER:
       splitterLoop();
       break;
     case DEATHTRAP:
       deathtrapLoop();
+      break;
+    case FUNNEL:
+      funnelLoop();
+      break;
+    case SWITCHER:
+      switcherLoop();
       break;
   }
 
