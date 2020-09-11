@@ -693,9 +693,6 @@ void setWallRole() {
 
   if (buttonSingleClicked()) { //prime a treasure piece to be dropped
 
-    //    setColor(RED);
-    //    wallRole = (wallRole + random(4) + 1) % 6;
-
     treasurePrimed = true;
     sendingCounter = 0;
 
@@ -703,10 +700,6 @@ void setWallRole() {
     //    bSplitter = false;
   }
 
-  if (treasurePrimed == true) {
-    setColorOnFace(BALL_COLOR, (bottomFace + 3) % 6);
-
-  }
 
   if (buttonDoubleClicked()) { //switch the role randomly
     setColor(BALL_COLOR); //I'd like to add a fun animation here.
@@ -749,6 +742,29 @@ void setWallRole() {
       switcherLoop();
       break;
   }
+
+
+  if (treasurePrimed == true) {
+    treasurePrimedAnimation();
+  }
+
+}
+
+#define TREASURE_TIME 100
+byte treasureFace;
+Timer treasureTimer;
+
+void treasurePrimedAnimation() {
+
+if(treasureTimer.isExpired()){
+
+  treasureFace = (treasureFace + 1) % 6;
+  treasureTimer.set(TREASURE_TIME);
+  
+  }
+
+  setColorOnFace(BALL_COLOR, treasureFace);
+
 
 }
 
