@@ -8,7 +8,8 @@
 enum blinkRoles
 {
   WALL,
-  BUCKET
+  BUCKET,
+  SPAWNER
 };
 
 byte blinkRole = WALL;
@@ -16,9 +17,9 @@ byte blinkRole = WALL;
 enum wallRoles
 {
   GO_SIDE,
-  SPINNER,
-  SPLITTER,
-  DEATHTRAP,
+  SPINNER, //no more
+  SPLITTER, //no more
+  DEATHTRAP, //no more
   FUNNEL,
   SWITCHER
 };
@@ -28,7 +29,8 @@ byte wallRole = FUNNEL;
 enum gravityStates
 {
   LEFT_DOWN,
-  LEFT_UP, TOP,
+  LEFT_UP,
+  TOP,
   RIGHT_UP,
   RIGHT_DOWN,
   BOTTOM,
@@ -79,7 +81,6 @@ byte bottomFace;
 #define BG_COLOR makeColorHSB(50, 200, 255) //a temple tan ideally
 
 
-
 //GRAVITY
 Timer gravityPulseTimer;
 #define GRAVITY_PULSE 50
@@ -108,7 +109,6 @@ bool goLeft;
 
 //SPLITTER
 bool bSplitter;
-
 
 void setup() {
   randomize();
@@ -151,6 +151,8 @@ void loop() {
 
 byte sendingCounter = 0;
 
+Timer connectedTimer;
+
 void blankLoop(byte face) {
   //listen to hear SENDING
   //when I hear sending, I want to do some things:
@@ -159,19 +161,6 @@ void blankLoop(byte face) {
 
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
       //Guess what? I heard sending
-
-      sendingCounter = sendingCounter + 1;
-      //this counter is so the treasure waits to drop until after the gravity state has been agreed upon
-
-      //This is where the treasure is allowed to fall
-
-      if (treasurePrimed == true) {
-        if (sendingCounter > 3) {
-          bBallFalling = true;
-          startingFace = (bottomFace + 3) % 6;
-          treasurePrimed = false;
-        }
-      }
 
       //2. arrange my own gravity state to match
       if (getGravityState(getLastValueReceivedOnFace(face)) == BOTTOM) {
@@ -195,7 +184,6 @@ void blankLoop(byte face) {
 
       //3. change my own face to Received
       signalState[face] = RECEIVED;
-
       //4. set any faces I have that are in BLANK to sending
 
       FOREACH_FACE(f) {
@@ -205,7 +193,6 @@ void blankLoop(byte face) {
           }
         }
       }
-
     }
   }
 }
@@ -217,9 +204,10 @@ void sendingLoop(byte face) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == RECEIVED) {
       //if the neighbor has already received a message, stop sending and turn to blank.
       signalState[face] = BLANK;
+
     }
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
-      //if the neighbor has already received a message, stop sending and turn to blank.
+      //if the neighbor has already sent a message, stop sending and say received
       signalState[face] = RECEIVED;
     }
     if (getSignalState(getLastValueReceivedOnFace(face)) == IM_BUCKET) {
@@ -237,11 +225,16 @@ void receivedLoop(byte face) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == BLANK) {
       //if the neighbor is blank, stop sending and turn to blank.
       signalState[face] = BLANK;
+
+      sendingCounter = 0;
     }
   } else {
     signalState[face] = BLANK;
+
+    sendingCounter = 0;
   }
 }
+
 
 void imBucketLoop(byte face) {
   signalState[face] = BLANK;
@@ -321,8 +314,6 @@ void setWallOrientation() {
       gravityState[f] = RIGHT_DOWN;
     }
   }
-
-
 }
 
 
@@ -512,6 +503,16 @@ void ballLogic () {
       }
     }
 
+    if (blinkRole == SPAWNER) {
+      if (stepCount == 1) {
+        ballState[bottomFace] = BALL;
+      }
+      if (stepCount == 2) {
+        ballFell = true;
+      }
+
+    }
+
     ballDropTimer.set(BALL_PULSE);
     stepCount = stepCount + 1;
 
@@ -543,11 +544,9 @@ byte marbleScore = 0;
 //BUCKET -------------------------
 void bucketLoop() {
   if (bChangeRole) {
-    blinkRole = WALL;
+    blinkRole = SPAWNER;
     bChangeRole = false;
   }
-
-
 
   bool addScore;
 
@@ -653,6 +652,82 @@ bool isBucket (byte face) {
   }
 }
 
+//SPAWNER------------------------------------------
+
+//the piece that drops the treasure
+
+void spawnerLoop() {
+  if (bChangeRole) {
+    blinkRole = WALL;
+    bChangeRole = false;
+  }
+  setColor(dim(BALL_COLOR, 125));
+
+  setWallOrientation();
+
+  bool treasureDropped;
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+
+      treasureDropped = true;
+
+      if (didValueOnFaceChange(f)) { //am I recieving new information and have been rejoined to the tower?
+        connectedTimer.set(200);
+      }
+      if (didValueOnFaceChange(f) == false) { //has new information stopped coming in? I'm disconnected from the tower? If so, prime treasure
+
+        if (connectedTimer.isExpired()) {
+//          setColorOnFace(BLUE, f);
+          treasurePrimed = true;
+
+          treasureDropped = false;
+        }
+      }
+    }
+
+    if (isAlone() == true) { //am I entirely alone? if so, prime treasure
+      //are any of us?
+      //dang that's deep
+
+      treasurePrimed = true;
+
+      treasureDropped = false;
+//      setColorOnFace(MAGENTA, bottomFace);
+    }
+  }
+
+  if (treasureDropped == true && treasurePrimed == true) {
+    bBallFalling = true;
+    startingFace = (bottomFace + 3) % 6;
+    treasurePrimed = false;
+  }
+
+  if (treasurePrimed == true) {
+    treasurePrimedAnimation();
+  }
+
+  if (bBallFalling == true) {
+    ballLogic();
+  }
+}
+
+#define TREASURE_TIME 100
+byte treasureFace;
+Timer treasureTimer;
+
+void treasurePrimedAnimation() {
+
+  if (treasureTimer.isExpired()) {
+
+    treasureFace = (treasureFace + 1) % 6;
+    treasureTimer.set(TREASURE_TIME);
+
+  }
+
+  setColorOnFace(BALL_COLOR, treasureFace);
+}
+
 
 //------------------------------------------
 
@@ -681,6 +756,9 @@ void setRole() {
     case BUCKET:
       bucketLoop();
       break;
+    case SPAWNER:
+      spawnerLoop();
+      break;
   }
 
   if (bLongPress) {
@@ -696,8 +774,6 @@ void setWallRole() {
     treasurePrimed = true;
     sendingCounter = 0;
 
-
-    //    bSplitter = false;
   }
 
 
@@ -707,7 +783,6 @@ void setWallRole() {
     wallRole = (wallRole + random(2) + 1) % 4;
 
     bSplitter = false;
-
   }
 
 
@@ -742,31 +817,8 @@ void setWallRole() {
       switcherLoop();
       break;
   }
-
-
-  if (treasurePrimed == true) {
-    treasurePrimedAnimation();
-  }
-
 }
 
-#define TREASURE_TIME 100
-byte treasureFace;
-Timer treasureTimer;
-
-void treasurePrimedAnimation() {
-
-if(treasureTimer.isExpired()){
-
-  treasureFace = (treasureFace + 1) % 6;
-  treasureTimer.set(TREASURE_TIME);
-  
-  }
-
-  setColorOnFace(BALL_COLOR, treasureFace);
-
-
-}
 
 //and this is all that bit stuff that allows all the signals to be safely sent!
 
