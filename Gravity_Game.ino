@@ -68,9 +68,8 @@ bool treasurePrimed;
 
 byte bottomFace;
 
-#define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
+//#define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
 #define PURPLE makeColorHSB(200, 255, 230)
-
 
 #define FEATURE_COLOR makeColorHSB(25, 255, 240) //orange
 
@@ -197,7 +196,6 @@ void blankLoop(byte face) {
   }
 }
 
-
 void sendingLoop(byte face) {
 
   if (!isValueReceivedOnFaceExpired(face)) {
@@ -216,7 +214,6 @@ void sendingLoop(byte face) {
   } else {
     signalState[face] = BLANK;
   }
-
 }
 
 void receivedLoop(byte face) {
@@ -225,16 +222,13 @@ void receivedLoop(byte face) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == BLANK) {
       //if the neighbor is blank, stop sending and turn to blank.
       signalState[face] = BLANK;
-
       sendingCounter = 0;
     }
   } else {
     signalState[face] = BLANK;
-
     sendingCounter = 0;
   }
 }
-
 
 void imBucketLoop(byte face) {
   signalState[face] = BLANK;
@@ -276,7 +270,8 @@ void wallLoop() {
   //      startingFace = (bottomFace + 3) % 6;
   //    }
   //  }
-  //otherwise we out here listening for anyone saying ball
+
+  //We out here listening for anyone saying ball
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {
       if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
@@ -315,7 +310,6 @@ void setWallOrientation() {
     }
   }
 }
-
 
 //this is where we draw the graphics for each temple pattern
 
@@ -673,12 +667,12 @@ void spawnerLoop() {
       treasureDropped = true;
 
       if (didValueOnFaceChange(f)) { //am I recieving new information and have been rejoined to the tower?
-        connectedTimer.set(200);
+        connectedTimer.set(400); //check this timer I think it's causing some of the current bugs. Might want to move it or make it longer
       }
       if (didValueOnFaceChange(f) == false) { //has new information stopped coming in? I'm disconnected from the tower? If so, prime treasure
 
         if (connectedTimer.isExpired()) {
-//          setColorOnFace(BLUE, f);
+          //          setColorOnFace(BLUE, f);
           treasurePrimed = true;
 
           treasureDropped = false;
@@ -693,14 +687,17 @@ void spawnerLoop() {
       treasurePrimed = true;
 
       treasureDropped = false;
-//      setColorOnFace(MAGENTA, bottomFace);
+      //      setColorOnFace(MAGENTA, bottomFace);
     }
   }
 
   if (treasureDropped == true && treasurePrimed == true) {
-    bBallFalling = true;
-    startingFace = (bottomFace + 3) % 6;
-    treasurePrimed = false;
+    if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball
+
+      bBallFalling = true;
+      startingFace = (bottomFace + 3) % 6;
+      treasurePrimed = false;
+    }
   }
 
   if (treasurePrimed == true) {
