@@ -17,14 +17,14 @@ byte blinkRole = WALL;
 enum wallRoles
 {
   GO_SIDE,
-  SPINNER, //no more
-  SPLITTER, //no more
-  DEATHTRAP, //no more
-  FUNNEL,
+//  SPINNER, //no more
+  SPLITTER, 
+  DEATHTRAP,
+//  FUNNEL,
   SWITCHER
 };
 
-byte wallRole = FUNNEL;
+byte wallRole = GO_SIDE;
 
 enum gravityStates
 {
@@ -68,7 +68,7 @@ bool treasurePrimed;
 
 byte bottomFace;
 
-//#define WALLRED makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
+#define NICE_BLUE makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
 #define PURPLE makeColorHSB(200, 255, 230)
 
 #define FEATURE_COLOR makeColorHSB(25, 255, 240) //orange
@@ -107,7 +107,7 @@ bool ballFell = false;
 bool goLeft;
 
 //SPLITTER
-bool bSplitter;
+
 
 void setup() {
   randomize();
@@ -319,14 +319,16 @@ void funnelLoop() {
 
 bool fallDown;
 
+byte goFace;
+byte randomWallRole;
+
 void goSideLoop() {
 
-  if ((bottomFace + 1) % 6 == 0 || (bottomFace + 5) % 6 == 0) {
+  setColorOnFace(FEATURE_COLOR, goFace);
 
-    setColorOnFace(FEATURE_COLOR, 0);
+  if ((bottomFace + 1) % 6 == goFace || (bottomFace + 5) % 6 == goFace) {
     fallDown = false;
   } else {
-    setColorOnFace(PURPLE, 0);
     fallDown = true;
   }
 
@@ -335,25 +337,25 @@ void goSideLoop() {
 byte spinCount;
 byte fallFace;
 
-void spinnerLoop() {
-
-  setColorOnFace(FEATURE_COLOR, (spinCount) % 6);
-  setColorOnFace(FEATURE_COLOR, (spinCount + 3) % 6);
-
-  if (spinCount == bottomFace || (spinCount + 3) % 6 == bottomFace) {
-    fallFace = bottomFace;
-    setColorOnFace(PURPLE, (spinCount) % 6);
-    setColorOnFace(PURPLE, (spinCount + 3) % 6);
-  }
-
-  if (spinCount == (bottomFace + 1) % 6 || (spinCount + 3) % 6 == (bottomFace + 1) % 6) {
-    fallFace = (bottomFace + 1) % 6;
-  }
-
-  if (spinCount == (bottomFace + 5) % 6 || (spinCount + 3) % 6 == (bottomFace + 5) % 6) {
-    fallFace = (bottomFace + 5) % 6;
-  }
-}
+//void spinnerLoop() {
+//
+//  setColorOnFace(FEATURE_COLOR, (spinCount) % 6);
+//  setColorOnFace(FEATURE_COLOR, (spinCount + 3) % 6);
+//
+//  if (spinCount == bottomFace || (spinCount + 3) % 6 == bottomFace) {
+//    fallFace = bottomFace;
+//    setColorOnFace(PURPLE, (spinCount) % 6);
+//    setColorOnFace(PURPLE, (spinCount + 3) % 6);
+//  }
+//
+//  if (spinCount == (bottomFace + 1) % 6 || (spinCount + 3) % 6 == (bottomFace + 1) % 6) {
+//    fallFace = (bottomFace + 1) % 6;
+//  }
+//
+//  if (spinCount == (bottomFace + 5) % 6 || (spinCount + 3) % 6 == (bottomFace + 5) % 6) {
+//    fallFace = (bottomFace + 5) % 6;
+//  }
+//}
 
 void switcherLoop() {
 
@@ -364,43 +366,28 @@ void switcherLoop() {
     setColorOnFace(PURPLE, (bottomFace + 2) % 6);
     setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
   }
-
 }
 
 void splitterLoop() {
 
-  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
-  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 1) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 5) % 6);
+  setColorOnFace(NICE_BLUE, bottomFace);
 }
 
 void deathtrapLoop() {
-  setColorOnFace(RED, bottomFace);
-  setColorOnFace(RED, (bottomFace + 2) % 6);
-  setColorOnFace(RED, (bottomFace + 4) % 6);
-
+  setColorOnFace(WHITE, bottomFace);
+  setColorOnFace(RED, (bottomFace + 1) % 6);
+  setColorOnFace(RED, (bottomFace + 5) % 6);
 }
 
 //this is where the ball figures out where to go for each temple pattern
 
+bool pickRandomWallRole;
+
 void ballLogic () {
 
-  bSplitter = false;
-
   if (ballDropTimer.isExpired()) {
-
-    if (wallRole == FUNNEL) {
-
-      if (stepCount == 1) {
-        ballPos = startingFace;
-      }
-      if (stepCount == 2) {
-        ballPos = bottomFace;
-        ballState[ballPos] = BALL;
-      }
-      if (stepCount == 3) {
-        ballFell = true;
-      }
-    }
     if (wallRole == GO_SIDE) {
 
       if (stepCount == 1) {
@@ -409,7 +396,7 @@ void ballLogic () {
       if (stepCount == 2) {
 
         if (fallDown == false) {
-          ballPos = 0;
+          ballPos = goFace;
         } else if (fallDown == true) {
           ballPos = bottomFace;
         }
@@ -417,25 +404,6 @@ void ballLogic () {
       }
       if (stepCount == 3) {
         ballFell = true;
-      }
-    }
-    if (wallRole == SPINNER) {
-
-      if (stepCount == 1) {
-        ballPos = startingFace;
-      }
-      if (stepCount == 2) {
-
-        ballPos = fallFace;
-
-        ballState[ballPos] = BALL;
-      }
-      if (stepCount == 3) {
-        ballFell = true;
-        spinCount = spinCount + 1;
-        if (spinCount == 3) {
-          spinCount = 0;
-        }
       }
     }
     if (wallRole == SWITCHER) {
@@ -468,26 +436,27 @@ void ballLogic () {
         }
       }
     }
-
-    if (wallRole == SPLITTER) {
-      bSplitter = true;
+    if (wallRole == SPLITTER) { //1 treasure comes in, 3 come out
 
       if (stepCount == 1) {
         ballPos = startingFace;
       }
       if (stepCount == 2) {
-        ballPos = (bottomFace + 1) % 6;
+        ballPos = bottomFace;
         ballState[ballPos] = BALL;
-        ballState[(ballPos + 4) % 6] = BALL;
+        ballState[(bottomFace + 1) % 6] = BALL;
+        ballState[(bottomFace + 5) % 6] = BALL;
+        setColorOnFace(WHITE, (bottomFace + 1) % 6);
+        setColorOnFace(WHITE, (bottomFace + 5) % 6); //I should summon an animation here that takes as long as a frame
 
       }
       if (stepCount == 3) {
+        ballState[(bottomFace + 1) % 6] = NO_BALL;
+        ballState[(bottomFace + 5) % 6] = NO_BALL;
         ballFell = true;
-        ballState[(ballPos + 4) % 6] = NO_BALL;
       }
     }
-
-    if (wallRole == DEATHTRAP) {
+    if (wallRole == DEATHTRAP) { //1 treasure comes in, NONE come out
 
       if (stepCount == 1) {
         ballPos = startingFace;
@@ -496,7 +465,6 @@ void ballLogic () {
         ballFell = true;
       }
     }
-
     if (blinkRole == SPAWNER) {
       if (stepCount == 1) {
         ballState[bottomFace] = BALL;
@@ -504,33 +472,31 @@ void ballLogic () {
       if (stepCount == 2) {
         ballFell = true;
       }
-
     }
-
     ballDropTimer.set(BALL_PULSE);
     stepCount = stepCount + 1;
 
   } else if (!ballDropTimer.isExpired()) {
-
     //we don't want to see the first frame of the ball dropping
     if (stepCount > 1) {
       setColorOnFace(BALL_COLOR, ballPos);
-      if (bSplitter == true) {
-        if (stepCount == 2) {
-          setColorOnFace(BALL_COLOR, (ballPos + 4) % 6);
-        }
-      }
-    }
-
-    if (ballFell == true) {
-      stepCount = 0;
-      ballState[ballPos] = NO_BALL;
-      bBallFalling = false;
-      ballFell = false;
-
     }
   }
+  
 
+
+  if (ballFell == true) {
+    stepCount = 0;
+    ballState[ballPos] = NO_BALL;
+    bBallFalling = false;
+    pickRandomWallRole = true;
+    ballFell = false;
+  }
+
+  if(pickRandomWallRole == true){
+    randomWallRole = random(9);
+    pickRandomWallRole = false;
+    }
 }
 
 byte marbleScore = 0;
@@ -590,7 +556,6 @@ void bucketLoop() {
       setColorOnFace(BALL_COLOR, ((bottomFace + f ) % 6));
     }
   }
-
 }
 
 
@@ -631,7 +596,6 @@ void gravityLoop() {
       }
     }
   }
-
 }
 
 bool isBucket (byte face) {
@@ -674,7 +638,6 @@ void spawnerLoop() {
         if (connectedTimer.isExpired()) {
           //          setColorOnFace(BLUE, f);
           treasurePrimed = true;
-
           treasureDropped = false;
         }
       }
@@ -685,7 +648,6 @@ void spawnerLoop() {
       //dang that's deep
 
       treasurePrimed = true;
-
       treasureDropped = false;
       //      setColorOnFace(MAGENTA, bottomFace);
     }
@@ -773,42 +735,41 @@ void setWallRole() {
 
   }
 
+  //  if (buttonDoubleClicked()) { //switch the role randomly
+  //    setColor(BALL_COLOR); //I'd like to add a fun animation here.
+  //
+  //    wallRole = (wallRole + random(2) + 1) % 4;
+  //  }
 
-  if (buttonDoubleClicked()) { //switch the role randomly
-    setColor(BALL_COLOR); //I'd like to add a fun animation here.
-
-    wallRole = (wallRole + random(2) + 1) % 4;
-
-    bSplitter = false;
+  
+  
+  if (randomWallRole <= 5) {
+    wallRole = GO_SIDE;
+    goFace = randomWallRole;
+  } else if (randomWallRole == 6 || randomWallRole == 7) {
+    wallRole = SPLITTER;
+  } else if (randomWallRole == 8) {
+    wallRole = DEATHTRAP;
   }
-
 
   if (buttonMultiClicked()) {
     if (buttonClickCount() == 3) {
       wallRole = wallRole + 1;
-      if (wallRole == 6) {
+      if (wallRole == 4) {
         wallRole = 0;
       }
     }
-
-    bSplitter = false;
   }
 
   switch (wallRole) {
     case GO_SIDE:
       goSideLoop();
       break;
-    case SPINNER:
-      spinnerLoop();
-      break;
     case SPLITTER:
       splitterLoop();
       break;
     case DEATHTRAP:
       deathtrapLoop();
-      break;
-    case FUNNEL:
-      funnelLoop();
       break;
     case SWITCHER:
       switcherLoop();
