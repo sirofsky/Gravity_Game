@@ -9,6 +9,7 @@ enum blinkRoles
 {
   WALL,
   BUCKET,
+  GRAVITY,
   SPAWNER
 };
 
@@ -17,10 +18,10 @@ byte blinkRole = WALL;
 enum wallRoles
 {
   GO_SIDE,
-//  SPINNER, //no more
-  SPLITTER, 
+  //  SPINNER, //no more
+  SPLITTER,
   DEATHTRAP,
-//  FUNNEL,
+  //  FUNNEL,
   SWITCHER
 };
 
@@ -105,9 +106,12 @@ bool ballFell = false;
 
 //SWITCHER
 bool goLeft;
+bool imSwitcher = false;
 
 //SPLITTER
 
+
+byte randomWallRole;
 
 void setup() {
   randomize();
@@ -250,6 +254,8 @@ void wallLoop() {
       if (isBucket(bucketNeighbor)) {
         bFace = (f + 1) % 6;
         bottomFace = bFace;
+        randomWallRole = 10;
+        imSwitcher = true;
         gravityLoop(); //I get to decide what direction gravity is for the entire game! Yippee!
       }
     } else { //I'm a normal wall piece
@@ -262,14 +268,6 @@ void wallLoop() {
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 4) % 6);
   setWallRole();
-
-
-  //  if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball by single clicking
-  //    if (buttonSingleClicked()) {
-  //      bBallFalling = true;
-  //      startingFace = (bottomFace + 3) % 6;
-  //    }
-  //  }
 
   //We out here listening for anyone saying ball
   FOREACH_FACE(f) {
@@ -320,7 +318,7 @@ void funnelLoop() {
 bool fallDown;
 
 byte goFace;
-byte randomWallRole;
+
 
 void goSideLoop() {
 
@@ -333,29 +331,6 @@ void goSideLoop() {
   }
 
 }
-
-byte spinCount;
-byte fallFace;
-
-//void spinnerLoop() {
-//
-//  setColorOnFace(FEATURE_COLOR, (spinCount) % 6);
-//  setColorOnFace(FEATURE_COLOR, (spinCount + 3) % 6);
-//
-//  if (spinCount == bottomFace || (spinCount + 3) % 6 == bottomFace) {
-//    fallFace = bottomFace;
-//    setColorOnFace(PURPLE, (spinCount) % 6);
-//    setColorOnFace(PURPLE, (spinCount + 3) % 6);
-//  }
-//
-//  if (spinCount == (bottomFace + 1) % 6 || (spinCount + 3) % 6 == (bottomFace + 1) % 6) {
-//    fallFace = (bottomFace + 1) % 6;
-//  }
-//
-//  if (spinCount == (bottomFace + 5) % 6 || (spinCount + 3) % 6 == (bottomFace + 5) % 6) {
-//    fallFace = (bottomFace + 5) % 6;
-//  }
-//}
 
 void switcherLoop() {
 
@@ -467,9 +442,15 @@ void ballLogic () {
     }
     if (blinkRole == SPAWNER) {
       if (stepCount == 1) {
-        ballState[bottomFace] = BALL;
+        ballPos = startingFace;
       }
       if (stepCount == 2) {
+        ballPos = bottomFace;
+        ballState[bottomFace] = BALL;
+        ballState[(bottomFace + 1) % 6] = NO_BALL;
+        ballState[(bottomFace + 5) % 6] = NO_BALL;
+      }
+      if (stepCount == 3) {
         ballFell = true;
       }
     }
@@ -482,21 +463,25 @@ void ballLogic () {
       setColorOnFace(BALL_COLOR, ballPos);
     }
   }
-  
+
 
 
   if (ballFell == true) {
     stepCount = 0;
     ballState[ballPos] = NO_BALL;
     bBallFalling = false;
-    pickRandomWallRole = true;
+    if (imSwitcher == false) { //not a perfect fix, but it'll do for now
+      pickRandomWallRole = true;
+    } else if (imSwitcher == true) { //if it's the switcher, we want it to stay the switcher
+      randomWallRole = 10;
+    }
     ballFell = false;
   }
 
-  if(pickRandomWallRole == true){
+  if (pickRandomWallRole == true) {
     randomWallRole = random(9);
     pickRandomWallRole = false;
-    }
+  }
 }
 
 byte marbleScore = 0;
@@ -559,6 +544,7 @@ void bucketLoop() {
 }
 
 
+
 //GRAVITY -------------------------------
 void gravityLoop() {
 
@@ -569,9 +555,11 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
-  wallRole = SWITCHER; //this piece will always alternate between passing the treasure to either bucket
+  //  imSwitcher = true;
 
-  if (gravityPulseTimer.isExpired()) {
+  //  wallRole = SWITCHER; //this piece will always alternate between passing the treasure to either bucket
+  //randomWallRole = 10;
+  if (gravityPulseTimer.isExpired()) { //gravity pulse is how frequently the gravity refresh message will be sent
     gravityPulseTimer.set(GRAVITY_PULSE);
     FOREACH_FACE(f) {
       signalState[f] = SENDING;
@@ -657,7 +645,7 @@ void spawnerLoop() {
     if (isValueReceivedOnFaceExpired((bottomFace + 3) % 6)) { //I have nobody above me, then it's okay to spawn a ball
 
       bBallFalling = true;
-      startingFace = (bottomFace + 3) % 6;
+      //      startingFace = (bottomFace + 3) % 6;
       treasurePrimed = false;
     }
   }
@@ -728,12 +716,12 @@ void setRole() {
 
 void setWallRole() {
 
-  if (buttonSingleClicked()) { //prime a treasure piece to be dropped
-
-    treasurePrimed = true;
-    sendingCounter = 0;
-
-  }
+  //  if (buttonSingleClicked()) { //prime a treasure piece to be dropped
+  //
+  //    treasurePrimed = true;
+  //    sendingCounter = 0;
+  //
+  //  }
 
   //  if (buttonDoubleClicked()) { //switch the role randomly
   //    setColor(BALL_COLOR); //I'd like to add a fun animation here.
@@ -741,8 +729,7 @@ void setWallRole() {
   //    wallRole = (wallRole + random(2) + 1) % 4;
   //  }
 
-  
-  
+
   if (randomWallRole <= 5) {
     wallRole = GO_SIDE;
     goFace = randomWallRole;
@@ -750,16 +737,18 @@ void setWallRole() {
     wallRole = SPLITTER;
   } else if (randomWallRole == 8) {
     wallRole = DEATHTRAP;
+  } else if (randomWallRole == 10) {
+    wallRole = SWITCHER;
   }
 
-  if (buttonMultiClicked()) {
-    if (buttonClickCount() == 3) {
-      wallRole = wallRole + 1;
-      if (wallRole == 4) {
-        wallRole = 0;
-      }
-    }
-  }
+  //  if (buttonMultiClicked()) {
+  //    if (buttonClickCount() == 3) {
+  //      wallRole = wallRole + 1;
+  //      if (wallRole == 4) {
+  //        wallRole = 0;
+  //      }
+  //    }
+  //  }
 
   switch (wallRole) {
     case GO_SIDE:
