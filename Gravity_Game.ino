@@ -1,4 +1,4 @@
-//GRAVITY GAME AKA TREASURE TUMBLE
+//TREASURE TUMBLE
 
 //Car Salesman slaps code
 //"You could fit so much incoherent code in this badboy"
@@ -21,7 +21,7 @@ enum wallRoles
   //  SPINNER, //no more
   SPLITTER,
   DEATHTRAP,
-  //  FUNNEL,
+  //  FUNNEL, //NO MORE
   SWITCHER
 };
 
@@ -71,13 +71,8 @@ byte bottomFace;
 
 #define NICE_BLUE makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
 #define PURPLE makeColorHSB(200, 255, 230)
-
 #define FEATURE_COLOR makeColorHSB(25, 255, 240) //orange
-
-//#define WALLPURPLE makeColorHSB(155, 255, 220) //more like blue
-
 #define BALL_COLOR makeColorHSB(90, 225, 255) //an emerald green
-
 #define BG_COLOR makeColorHSB(50, 200, 255) //a temple tan ideally
 
 
@@ -93,7 +88,7 @@ Timer marbleScoreTimer;
 
 //BALL (some variables needed to get the ball rolling)
 Timer ballDropTimer;
-#define BALL_PULSE 150
+#define BALL_PULSE 200 //slowed down for Dan's tired eyes
 
 bool bBallFalling = false;
 
@@ -114,7 +109,7 @@ bool imSwitcher = false;
 byte randomWallRole;
 
 void setup() {
-  randomize();
+  randomize(); //gotta do this to make sure our random is truly random
 }
 
 void loop() {
@@ -206,7 +201,6 @@ void sendingLoop(byte face) {
     if (getSignalState(getLastValueReceivedOnFace(face)) == RECEIVED) {
       //if the neighbor has already received a message, stop sending and turn to blank.
       signalState[face] = BLANK;
-
     }
     if (getSignalState(getLastValueReceivedOnFace(face)) == SENDING) {
       //if the neighbor has already sent a message, stop sending and say received
@@ -245,8 +239,6 @@ void wallLoop() {
     blinkRole = BUCKET;
     bChangeRole = false;
   }
-
-  //  bool isGravity;
 
   FOREACH_FACE(f) {
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
@@ -311,18 +303,23 @@ void setWallOrientation() {
 
 //this is where we draw the graphics for each temple pattern
 
-void funnelLoop() {
-
-}
-
 bool fallDown;
-
 byte goFace;
-
 
 void goSideLoop() {
 
-  setColorOnFace(FEATURE_COLOR, goFace);
+  if (goFace == (bottomFace + 2) % 6  || goFace == (bottomFace + 3) % 6 || goFace == (bottomFace + 4) % 6) {
+    goFace = (goFace + 3) % 6;
+  }
+
+  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 3) % 6);
+  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 4) % 6);
+  setColorOnFace(FEATURE_COLOR, bottomFace);
+  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
+  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+  setColorOnFace(OFF, goFace);
+  setColorOnFace(OFF, (goFace + 3) % 6);
 
   if ((bottomFace + 1) % 6 == goFace || (bottomFace + 5) % 6 == goFace) {
     fallDown = false;
