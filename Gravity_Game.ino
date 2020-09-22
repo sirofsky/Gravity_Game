@@ -88,7 +88,7 @@ Timer marbleScoreTimer;
 
 //BALL (some variables needed to get the ball rolling)
 Timer ballDropTimer;
-#define BALL_PULSE 200 //slowed down for Dan's tired eyes
+#define BALL_PULSE 300 //slowed down for Dan's tired eyes
 
 bool bBallFalling = false;
 
@@ -321,11 +321,11 @@ void goSideLoop() {
   setColorOnFace(OFF, goFace);
   setColorOnFace(OFF, (goFace + 3) % 6);
 
-  if ((bottomFace + 1) % 6 == goFace || (bottomFace + 5) % 6 == goFace) {
-    fallDown = false;
-  } else {
-    fallDown = true;
-  }
+  //  if ((bottomFace + 1) % 6 == goFace || (bottomFace + 5) % 6 == goFace) {
+  //    fallDown = false;
+  //  } else {
+  //    fallDown = true;
+  //  }
 
 }
 
@@ -357,7 +357,7 @@ void deathtrapLoop() {
 
 bool pickRandomWallRole;
 
-void ballLogic () {
+void ballLogic() {
 
   if (ballDropTimer.isExpired()) {
     if (wallRole == GO_SIDE) {
@@ -367,11 +367,7 @@ void ballLogic () {
       }
       if (stepCount == 2) {
 
-        if (fallDown == false) {
-          ballPos = goFace;
-        } else if (fallDown == true) {
-          ballPos = bottomFace;
-        }
+        ballPos = goFace;
         ballState[ballPos] = BALL;
       }
       if (stepCount == 3) {
@@ -456,11 +452,13 @@ void ballLogic () {
 
   } else if (!ballDropTimer.isExpired()) {
     //we don't want to see the first frame of the ball dropping
+    byte pulseMapped = map(millis() % BALL_PULSE, 0, BALL_PULSE, 0, 255);
+    byte dimness = sin8_C(pulseMapped);
+
     if (stepCount > 1) {
-      setColorOnFace(BALL_COLOR, ballPos);
+      setColorOnFace(dim(BALL_COLOR, dimness), ballPos);
     }
   }
-
 
 
   if (ballFell == true) {
@@ -496,7 +494,7 @@ void bucketLoop() {
 
   FOREACH_FACE(f) {
 
-    signalState[f] = IM_BUCKET;
+    signalState[f] = IM_BUCKET; //<-- this line takes up 5% of the space somehow
 
     if (!isValueReceivedOnFaceExpired(f)) {
       if (getBallState(getLastValueReceivedOnFace(f)) == BALL) {
@@ -508,21 +506,23 @@ void bucketLoop() {
       }
 
       //now we need to find out which face is on the bottom to get our bearings.
-      if (getGravityState(getLastValueReceivedOnFace(f)) == BOTTOM) {
-        bottomFace = (f + 3) % 6;
-      }
+      //but we don't need ALL of these because we know where the central source of truth is...
+      //cool we saved 1%
+      //      if (getGravityState(getLastValueReceivedOnFace(f)) == BOTTOM) {
+      //        bottomFace = (f + 3) % 6;
+      //      }
       if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_DOWN) {
         bottomFace = (f + 2) % 6;
       }
-      if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_UP) {
-        bottomFace = (f + 1) % 6;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(f)) == TOP) {
-        bottomFace = f;
-      }
-      if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_UP) {
-        bottomFace = (f + 5) % 6;
-      }
+      //      if (getGravityState(getLastValueReceivedOnFace(f)) == LEFT_UP) {
+      //        bottomFace = (f + 1) % 6;
+      //      }
+      //      if (getGravityState(getLastValueReceivedOnFace(f)) == TOP) {
+      //        bottomFace = f;
+      //      }
+      //      if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_UP) {
+      //        bottomFace = (f + 5) % 6;
+      //      }
       if (getGravityState(getLastValueReceivedOnFace(f)) == RIGHT_DOWN) {
         bottomFace = (f + 4) % 6;
       }
@@ -552,10 +552,6 @@ void gravityLoop() {
     bChangeRole = false;
   }
 
-  //  imSwitcher = true;
-
-  //  wallRole = SWITCHER; //this piece will always alternate between passing the treasure to either bucket
-  //randomWallRole = 10;
   if (gravityPulseTimer.isExpired()) { //gravity pulse is how frequently the gravity refresh message will be sent
     gravityPulseTimer.set(GRAVITY_PULSE);
     FOREACH_FACE(f) {
@@ -713,20 +709,6 @@ void setRole() {
 
 void setWallRole() {
 
-  //  if (buttonSingleClicked()) { //prime a treasure piece to be dropped
-  //
-  //    treasurePrimed = true;
-  //    sendingCounter = 0;
-  //
-  //  }
-
-  //  if (buttonDoubleClicked()) { //switch the role randomly
-  //    setColor(BALL_COLOR); //I'd like to add a fun animation here.
-  //
-  //    wallRole = (wallRole + random(2) + 1) % 4;
-  //  }
-
-
   if (randomWallRole <= 5) {
     wallRole = GO_SIDE;
     goFace = randomWallRole;
@@ -737,15 +719,6 @@ void setWallRole() {
   } else if (randomWallRole == 10) {
     wallRole = SWITCHER;
   }
-
-  //  if (buttonMultiClicked()) {
-  //    if (buttonClickCount() == 3) {
-  //      wallRole = wallRole + 1;
-  //      if (wallRole == 4) {
-  //        wallRole = 0;
-  //      }
-  //    }
-  //  }
 
   switch (wallRole) {
     case GO_SIDE:
