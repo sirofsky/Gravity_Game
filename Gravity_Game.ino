@@ -30,9 +30,20 @@ const byte IR_IDLE_VALUE = 7;   // A value we send when we do not know which way
 const int LOCKOUT_TIMER_MS = 250;               // This should be long enough for very large loops, but short enough to be unnoticable
 
 bool amGod = false;
+byte gravitySignal[6] = {IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE};
 
 void loop() {
 
+  gravityLoop();
+
+  //send data
+  FOREACH_FACE(f) {
+    byte sendData = gravitySignal[f];
+    setValueSentOnFace(sendData, f);
+  }
+}
+
+void gravityLoop() {
   setColor( OFF );
 
   if (buttonDoubleClicked()) {
@@ -46,7 +57,10 @@ void loop() {
     FOREACH_FACE(f) {
 
       // Since by definition my face 0 is north, I can just send my face number
-      setValueSentOnFace( f , f );
+
+      //setValueSentOnFace( f , f );
+      gravitySignal[f] = f;
+
 
     }
 
@@ -72,7 +86,7 @@ void loop() {
 
         FOREACH_FACE(f) {
 
-          if (!isValueReceivedOnFaceExpired(f) && (getLastValueReceivedOnFace(f) != IR_IDLE_VALUE) ) {
+          if (!isValueReceivedOnFaceExpired(f) && (getGravitySignal(getLastValueReceivedOnFace(f)) != IR_IDLE_VALUE) ) {
 
             // Found a parent!
 
@@ -85,7 +99,7 @@ void loop() {
             // Grab the compass heading from the parent face we are facing
             // (this is also compass heading of our oposite face)
 
-            byte parent_face_heading = getLastValueReceivedOnFace(f);
+            byte parent_face_heading = getGravitySignal(getLastValueReceivedOnFace(f));
 
             // Ok, so now we know that `our_oposite_face` has a heading of `parent_face_heading`.
 
@@ -104,13 +118,16 @@ void loop() {
 
       // Make sure our parent is still there and good
 
-      if (isValueReceivedOnFaceExpired(parent_face) || ( getLastValueReceivedOnFace(parent_face ) == IR_IDLE_VALUE) ) {
+      if (isValueReceivedOnFaceExpired(parent_face) || ( getGravitySignal(getLastValueReceivedOnFace(parent_face )) == IR_IDLE_VALUE) ) {
 
         // We had a parent, but our parent is now gone
 
         parent_face = NO_PARENT_FACE;
 
-        setValueSentOnAllFaces( IR_IDLE_VALUE );  // Propigate the no-parentness to everyone resets viraly
+        //setValueSentOnAllFaces( IR_IDLE_VALUE );  // Propigate the no-parentness to everyone resets viraly
+        FOREACH_FACE(ff) {
+          gravitySignal[ff] = IR_IDLE_VALUE;
+        }
 
         lockout_timer.set(LOCKOUT_TIMER_MS);    // Wait this long before accepting a new parent to prevent a loop
 
@@ -133,19 +150,22 @@ void loop() {
 
       if (parent_face == NO_PARENT_FACE ||  f == parent_face ) {
 
-        setValueSentOnFace( IR_IDLE_VALUE , f );
-
+        //setValueSentOnFace( IR_IDLE_VALUE , f );
+        gravitySignal[f] = IR_IDLE_VALUE;
       } else {
 
         // Map directions onto our face indexes.
         // (It was surpsringly hard for my brain to wrap around this simple formula!)
 
-        setValueSentOnFace( ((f + FACE_COUNT) - the_north_face) % FACE_COUNT , f  );
-
+        //setValueSentOnFace( ((f + FACE_COUNT) - the_north_face) % FACE_COUNT , f  );
+        gravitySignal[f] = ((f + FACE_COUNT) - the_north_face) % FACE_COUNT;
       }
 
     }
 
   }
+}
 
+byte getGravitySignal(byte data) {
+  return (data & 7);
 }
