@@ -105,6 +105,10 @@ bool imSwitcher = false;
 
 //SPLITTER
 
+//CRUMBLETIME
+Timer crumbleTimer;
+#define CRUMBLE_TIME 5000
+
 
 byte randomWallRole;
 
@@ -255,13 +259,15 @@ void wallLoop() {
     }
   }
 
-  shouldIRandomize();
+
 
   //here's our background color drawing
   setColor(dim(BG_COLOR, 160));
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 4) % 6);
   setWallRole();
+
+  shouldIRandomize();
 
   //We out here listening for anyone saying ball
   FOREACH_FACE(f) {
@@ -306,6 +312,7 @@ void setWallOrientation() {
 
 bool bShouldIRandomize = false;
 bool didIRandomize = true;
+bool callCrumbleTime = false;
 
 void shouldIRandomize() {
 
@@ -317,6 +324,7 @@ void shouldIRandomize() {
       if (didValueOnFaceChange(f)) { //am I recieving new information and have been rejoined to the tower?
         connectedTimer.set(400); //check this timer I think it's causing some of the current bugs. Might want to move it or make it longer
         didIRandomize = false;
+        callCrumbleTime = false;
       }
       if (didValueOnFaceChange(f) == false) { //has new information stopped coming in? I'm disconnected from the tower? If so, prime treasure
 
@@ -334,15 +342,31 @@ void shouldIRandomize() {
   if (bShouldIRandomize == true) {
     if (didIRandomize == false) {
       randomWallRole = random(9); //might want to make this number higher
+      callCrumbleTime = true;
+      crumbleTimer.set(CRUMBLE_TIME);
       didIRandomize = true;
       bShouldIRandomize = false;
     }
   }
+
+  if (callCrumbleTime == true) {
+    crumbleTime();
+  }
+
+}
+
+void crumbleTime() {
+  if (!crumbleTimer.isExpired()) {
+   setColorOnFace(OFF, random(5));
+  } else {
+    randomWallRole = 7;
+  }
+
 }
 
 //this is where we draw the graphics for each temple pattern
 
-bool fallDown;
+//bool fallDown;
 byte goFace;
 
 void goSideLoop() {
@@ -388,7 +412,7 @@ void deathtrapLoop() {
 
 //this is where the ball figures out where to go for each temple pattern
 
-bool pickRandomWallRole;
+//bool pickRandomWallRole;
 
 void ballLogic() {
 
@@ -731,14 +755,14 @@ void setRole() {
 
 void setWallRole() {
 
-  if (randomWallRole <= 5) {
+  if (randomWallRole <= 4) {
     wallRole = GO_SIDE;
     goFace = randomWallRole;
-  } else if (randomWallRole == 6 || randomWallRole == 7) {
+  } else if (randomWallRole == 5 || randomWallRole == 6) {
     wallRole = SPLITTER;
-  } else if (randomWallRole == 8) {
+  } else if (randomWallRole == 7) {
     wallRole = DEATHTRAP;
-  } else if (randomWallRole == 9 || randomWallRole == 10) {
+  } else if (randomWallRole == 8 || randomWallRole == 9 || randomWallRole == 10) {
     wallRole = SWITCHER;
   }
 
