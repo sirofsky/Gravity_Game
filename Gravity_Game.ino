@@ -255,6 +255,8 @@ void wallLoop() {
     }
   }
 
+  shouldIRandomize();
+
   //here's our background color drawing
   setColor(dim(BG_COLOR, 160));
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
@@ -301,6 +303,43 @@ void setWallOrientation() {
   }
 }
 
+
+bool bShouldIRandomize = false;
+bool didIRandomize = true;
+
+void shouldIRandomize() {
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+
+      bShouldIRandomize = false;
+
+      if (didValueOnFaceChange(f)) { //am I recieving new information and have been rejoined to the tower?
+        connectedTimer.set(400); //check this timer I think it's causing some of the current bugs. Might want to move it or make it longer
+        didIRandomize = false;
+      }
+      if (didValueOnFaceChange(f) == false) { //has new information stopped coming in? I'm disconnected from the tower? If so, prime treasure
+
+        if (connectedTimer.isExpired()) {
+          bShouldIRandomize = true;
+        }
+      }
+    }
+
+    if (isAlone() == true) { //am I entirely alone? if so, I should randomize
+      bShouldIRandomize = true;
+    }
+  }
+
+  if (bShouldIRandomize == true) {
+    if (didIRandomize == false) {
+      randomWallRole = random(9); //might want to make this number higher
+      didIRandomize = true;
+      bShouldIRandomize = false;
+    }
+  }
+}
+
 //this is where we draw the graphics for each temple pattern
 
 bool fallDown;
@@ -320,12 +359,6 @@ void goSideLoop() {
   setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
   setColorOnFace(OFF, goFace);
   setColorOnFace(OFF, (goFace + 3) % 6);
-
-  //  if ((bottomFace + 1) % 6 == goFace || (bottomFace + 5) % 6 == goFace) {
-  //    fallDown = false;
-  //  } else {
-  //    fallDown = true;
-  //  }
 
 }
 
@@ -452,7 +485,7 @@ void ballLogic() {
 
   } else if (!ballDropTimer.isExpired()) {
     //we don't want to see the first frame of the ball dropping
-    byte pulseMapped = map(millis() % BALL_PULSE, 0, BALL_PULSE, 0, 255);
+    byte pulseMapped = map(millis() % BALL_PULSE, 0, BALL_PULSE, 0, 255); //give the ball a smoother pulse animation while falling
     byte dimness = sin8_C(pulseMapped);
 
     if (stepCount > 1) {
@@ -460,22 +493,11 @@ void ballLogic() {
     }
   }
 
-
   if (ballFell == true) {
     stepCount = 0;
     ballState[ballPos] = NO_BALL;
     bBallFalling = false;
-    if (imSwitcher == false) { //not a perfect fix, but it'll do for now
-      pickRandomWallRole = true;
-    } else if (imSwitcher == true) { //if it's the switcher, we want it to stay the switcher
-      randomWallRole = 10;
-    }
     ballFell = false;
-  }
-
-  if (pickRandomWallRole == true) {
-    randomWallRole = random(9);
-    pickRandomWallRole = false;
   }
 }
 
@@ -716,7 +738,7 @@ void setWallRole() {
     wallRole = SPLITTER;
   } else if (randomWallRole == 8) {
     wallRole = DEATHTRAP;
-  } else if (randomWallRole == 10) {
+  } else if (randomWallRole == 9 || randomWallRole == 10) {
     wallRole = SWITCHER;
   }
 
