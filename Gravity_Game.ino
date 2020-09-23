@@ -31,10 +31,19 @@ const int LOCKOUT_TIMER_MS = 250;               // This should be long enough fo
 
 bool amGod = false;
 byte gravitySignal[6] = {IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE};
+byte godFaceOffset = 0;
 
 void loop() {
 
   gravityLoop();
+
+  if (buttonDoubleClicked()) {
+    amGod = !amGod;
+  }
+
+  if (buttonSingleClicked() && !amGod) {
+    godFaceOffset = (godFaceOffset + 1) % 6;
+  }
 
   //send data
   FOREACH_FACE(f) {
@@ -46,9 +55,7 @@ void loop() {
 void gravityLoop() {
   setColor( OFF );
 
-  if (buttonDoubleClicked()) {
-    amGod = !amGod;
-  }
+
 
   if (amGod) {
 
@@ -59,7 +66,7 @@ void gravityLoop() {
       // Since by definition my face 0 is north, I can just send my face number
 
       //setValueSentOnFace( f , f );
-      gravitySignal[f] = f;
+      gravitySignal[f] = (f + 6 - godFaceOffset) % 6;
 
 
     }
@@ -72,7 +79,7 @@ void gravityLoop() {
 
     //setColor(dim(WHITE,128));
 
-    setColorOnFace( BLUE , 0 );
+    setColorOnFace( WHITE , godFaceOffset );
 
     // That's all for the center blink!
 
@@ -141,7 +148,7 @@ void gravityLoop() {
       setColorOnFace( GREEN , the_north_face );
     } else {
       // Show our local north
-      setColorOnFace( BLUE , 0 );
+      setColorOnFace( BLUE , godFaceOffset );
     }
 
     // Set our output values relative to our north
