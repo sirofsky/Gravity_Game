@@ -18,7 +18,7 @@ byte parent_face = NO_PARENT_FACE;
 Timer lockout_timer;    // This prevents us from forming packet loops by giving changes time to die out.
 // Remember that timers init to expired state
 
-byte the_north_face;    // Which one of our faces is pointing north? Only valid when parent_face != NO_PARENT_FACE
+byte bottomFace;    // Which one of our faces is pointing north? Only valid when parent_face != NO_PARENT_FACE
 
 const byte IR_IDLE_VALUE = 7;   // A value we send when we do not know which way is north
 
@@ -26,9 +26,14 @@ const int LOCKOUT_TIMER_MS = 250;               // This should be long enough fo
 
 //------------------------------------------------------
 
+#define NICE_BLUE makeColorHSB(110, 255, 255) //more like cyan <-- SUCH A NICE COLOR TOO
+#define PURPLE makeColorHSB(200, 255, 230)
+#define FEATURE_COLOR makeColorHSB(25, 255, 240) //very red orange
+#define BALL_COLOR makeColorHSB(90, 225, 255) //an emerald green
+#define BG_COLOR makeColorHSB(50, 200, 255) //a temple tan ideally
+
 bool amGod = false;
 byte gravitySignal[6] = {IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE};
-byte godFaceOffset = 0;
 
 enum blinkRoles {WALL, BUCKET, SPAWNER};
 byte blinkRole = WALL;
@@ -36,9 +41,14 @@ byte blinkRole = WALL;
 bool bLongPress;
 bool bChangeRole;
 
+bool didIRandomize = true;
+
+byte randomWallRole;
+
+byte goFace;
 
 void setup() {
-  // Function intentionally left blank
+  randomize();
 }
 
 
@@ -49,10 +59,6 @@ void loop() {
 
   if (buttonDoubleClicked()) {
     amGod = !amGod;
-  }
-
-  if (buttonSingleClicked() && !amGod) {
-    godFaceOffset = (godFaceOffset + 1) % 6;
   }
 
   //send data
@@ -69,22 +75,14 @@ void wallLoop() {
   }
 
   setColor(OFF);
-
   amGod = false;
 
 
   FOREACH_FACE(f) {
-    //    if (getGravitySignal(getLastValueReceivedOnFace(f)) == 6) {
-    //      setColorOnFace(YELLOW, f);
-    //    }
-
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
-      setColorOnFace(YELLOW, f);
       byte bucketNeighbor = (f + 2) % 6; //and what about their neighbor?
       if (isBucket(bucketNeighbor)) {
-        setColor(WHITE);
-        //        bFace = (f + 1) % 6;
-        //        bottomFace = bFace;
+        bottomFace = (f + 1) % 6;
         //        randomWallRole = 10;
         //        imSwitcher = true;
         amGod = true; //I get to decide what direction gravity is for the entire game! Yippee!
@@ -93,6 +91,8 @@ void wallLoop() {
   }
 
   gravityLoop();
+
+  setWallRole();
 
 }
 
@@ -140,10 +140,7 @@ void gravityLoop() {
 
     FOREACH_FACE(f) {
 
-      // Since by definition my face 0 is north, I can just send my face number
-
-      //setValueSentOnFace( f , f );
-      gravitySignal[f] = (f + 6 - godFaceOffset) % 6;
+      gravitySignal[f] = (f + 6 - bottomFace) % 6; //eveything is being broadcast relative to the bottomFace
 
     }
 
@@ -155,7 +152,7 @@ void gravityLoop() {
 
     //setColor(dim(WHITE,128));
 
-    setColorOnFace( WHITE , godFaceOffset );
+    setColorOnFace( WHITE , bottomFace );
 
     // That's all for the center blink!
 
@@ -190,7 +187,7 @@ void gravityLoop() {
 
               // Compute which face is our north face from that
 
-              the_north_face = ( (our_oposite_face + FACE_COUNT) - parent_face_heading) % FACE_COUNT;     // This +FACE_COUNT is to keep it positive
+              bottomFace = ( (our_oposite_face + FACE_COUNT) - parent_face_heading) % FACE_COUNT;     // This +FACE_COUNT is to keep it positive
 
               // I guess we could break here, but breaks are ugly so instead we will keep looking
               // and use whatever the highest face with a parent that we find.
@@ -213,20 +210,20 @@ void gravityLoop() {
         FOREACH_FACE(ff) {
           gravitySignal[ff] = IR_IDLE_VALUE;
         }
-
         lockout_timer.set(LOCKOUT_TIMER_MS);    // Wait this long before accepting a new parent to prevent a loop
-
       }
-
     }
 
 
-    if (parent_face != NO_PARENT_FACE) {
+    if (parent_face != NO_PARENT_FACE) { //am I connected to the tower?
       // We are synced to a remote center, so show the global north in green
-      setColorOnFace( GREEN , the_north_face );
-    } else {
+      setColorOnFace( GREEN , bottomFace );
+
+      didIRandomize = false;
+    } else { //I'm not connected to the tower
       // Show our local north
-      setColorOnFace( BLUE , godFaceOffset );
+      setColorOnFace( BLUE , bottomFace );
+      randomizeWallRole();
     }
 
     // Set our output values relative to our north
@@ -242,17 +239,79 @@ void gravityLoop() {
         // Map directions onto our face indexes.
         // (It was surpsringly hard for my brain to wrap around this simple formula!)
 
-        //setValueSentOnFace( ((f + FACE_COUNT) - the_north_face) % FACE_COUNT , f  );
-        gravitySignal[f] = ((f + FACE_COUNT) - the_north_face) % FACE_COUNT;
+        //setValueSentOnFace( ((f + FACE_COUNT) - bottomFace) % FACE_COUNT , f  );
+        gravitySignal[f] = ((f + FACE_COUNT) - bottomFace) % FACE_COUNT;
       }
-
     }
+  }
+}
 
+void randomizeWallRole() {
+  if (didIRandomize == false) {
+    randomWallRole = random(9);
+    didIRandomize = true;
   }
 }
 
 
+void setWallRole() {
 
+  if (randomWallRole <= 4) {
+    //GO_SIDE
+    goFace = randomWallRole;
+    goSideLoop();
+
+  } else if (randomWallRole == 5 || randomWallRole == 6) {
+    //SPLITTER
+    splitterLoop();
+  } else if (randomWallRole == 7) {
+    //DEATHTRAP
+    deathtrapLoop();
+  } else if (randomWallRole == 8 || randomWallRole == 9 || randomWallRole == 10) {
+    //SWITCHER
+    switcherLoop();
+  }
+
+}
+
+void goSideLoop() {
+  if (goFace == (bottomFace + 2) % 6  || goFace == (bottomFace + 3) % 6 || goFace == (bottomFace + 4) % 6) {
+    goFace = (goFace + 3) % 6;
+  }
+
+  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 3) % 6);
+  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 4) % 6);
+  setColorOnFace(FEATURE_COLOR, bottomFace);
+  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
+  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+  setColorOnFace(OFF, goFace);
+  setColorOnFace(OFF, (goFace + 3) % 6);
+}
+
+void splitterLoop() {
+  setColorOnFace(PURPLE, (bottomFace + 1) % 6);
+  setColorOnFace(PURPLE, (bottomFace + 5) % 6);
+  setColorOnFace(NICE_BLUE, bottomFace);
+}
+
+void deathtrapLoop() {
+  setColorOnFace(WHITE, bottomFace);
+  setColorOnFace(RED, (bottomFace + 1) % 6);
+  setColorOnFace(RED, (bottomFace + 5) % 6);
+}
+
+bool goLeft;
+
+void switcherLoop() {
+  if (goLeft == true) {
+    setColorOnFace(PURPLE, (bottomFace + 4) % 6);
+    setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
+  } else {
+    setColorOnFace(PURPLE, (bottomFace + 2) % 6);
+    setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+  }
+}
 
 void setRole() {
   if (hasWoken()) {
