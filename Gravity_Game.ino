@@ -48,6 +48,10 @@ byte randomWallRole;
 
 byte goFace;
 
+//SPAWNER
+bool treasurePrimed = false;
+bool dropTreasure;
+
 Timer crumbleTimer;
 #define CRUMBLE_TIME 6000
 
@@ -134,7 +138,29 @@ void spawnerLoop() {
     bChangeRole = false;
   }
 
-  setColor(GREEN);
+  setColor(dim(BALL_COLOR, 120));
+
+  if (treasurePrimed == true) {
+    treasurePrimedAnimation();
+  } else {
+    setColor(dim(BALL_COLOR, 120));
+  }
+
+
+}
+
+#define TREASURE_TIME 100
+byte treasureFace;
+Timer treasureTimer;
+
+void treasurePrimedAnimation() {
+
+  if (treasureTimer.isExpired()) {
+    treasureFace = (treasureFace + 1) % 6;
+    treasureTimer.set(TREASURE_TIME);
+  }
+
+  setColorOnFace(BALL_COLOR, treasureFace);
 }
 
 void gravityLoop() {
@@ -228,10 +254,15 @@ void gravityLoop() {
       //I am connected to the tower
       didIRandomize = false;
       crumbleTimer.set(CRUMBLE_TIME);
+      treasurePrimed = false;
+      dropTreasure = true;
+
     } else {
       //I'm not connected to the tower
       randomizeWallRole();
       crumbleAnimation();
+
+      treasurePrimed = true;
 
     }
 
@@ -262,7 +293,7 @@ void randomizeWallRole() {
   }
 }
 
-void crumbleAnimation() {
+void crumbleAnimation() { //9% of the code! Too big!
   if (!crumbleTimer.isExpired()) {
     int timeLeft = crumbleTimer.getRemaining();
     byte brightness = timeLeft % 256;
@@ -324,6 +355,7 @@ void goSideLoop() {
   setColorOnFace(FEATURE_COLOR, bottomFace);
   setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
   setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+  //  setColor(FEATURE_COLOR);
   setColorOnFace(OFF, goFace);
   setColorOnFace(OFF, (goFace + 3) % 6);
 }
