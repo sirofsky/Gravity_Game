@@ -47,6 +47,16 @@ bool didIRandomize = true;
 byte randomWallRole;
 
 byte goFace;
+byte leftFace;
+byte rightFace;
+byte topLeftFace;
+byte topRightFace;
+byte topFace;
+
+//wall role stuff
+byte neighborCount;
+byte firstFace;
+byte secondFace;
 
 //SPAWNER
 bool treasurePrimed = false;
@@ -102,8 +112,17 @@ void wallLoop() {
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
   setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 4) % 6);
 
+  countNeighbors();
   setWallRole();
   gravityLoop();
+
+  leftFace = (bottomFace + 1) % 6;
+  topLeftFace = (bottomFace + 2) % 6;
+  topFace = (bottomFace + 3) % 6;
+  topRightFace = (bottomFace + 4) % 6;
+  rightFace = (bottomFace + 5) % 6;
+
+
 
 }
 
@@ -287,77 +306,173 @@ void gravityLoop() {
 }
 
 void randomizeWallRole() {
-  if (didIRandomize == false) {
-    randomWallRole = random(9);
-    didIRandomize = true;
-  }
+  //  if (didIRandomize == false) {
+  //    randomWallRole = random(9);
+  //    didIRandomize = true;
+  //  }
 }
 
 void crumbleAnimation() { //9% of the code! Too big!
-  if (!crumbleTimer.isExpired()) {
-    int timeLeft = crumbleTimer.getRemaining();
-    byte brightness = timeLeft % 256;
-    if (timeLeft < CRUMBLE_TIME) {
-      //do nothing!
-      if (timeLeft < (3.5 * (CRUMBLE_TIME / 5))) {
-        setColorOnFace(dim(CRUMBLE_COLOR, brightness), 4);
-        if (timeLeft < (2.5 * (CRUMBLE_TIME / 5))) {
-          setColorOnFace(dim(CRUMBLE_COLOR, brightness), 1);
-          if (timeLeft < (1.5 * (CRUMBLE_TIME / 5))) {
-            setColorOnFace(dim(CRUMBLE_COLOR, brightness), 3);
-            if (timeLeft < (1 * (CRUMBLE_TIME / 5))) {
-              setColorOnFace(dim(CRUMBLE_COLOR, brightness), 5);
-              if (timeLeft < (.6 * (CRUMBLE_TIME / 5))) {
-                setColorOnFace(dim(CRUMBLE_COLOR, brightness), 0);
-                if (timeLeft < (0.3 * (CRUMBLE_TIME / 5))) {
-                  setColorOnFace(dim(CRUMBLE_COLOR, brightness), 2);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  } else {
-    randomWallRole = 7; //deathtrap!
-  }
+  //  if (!crumbleTimer.isExpired()) {
+  //    int timeLeft = crumbleTimer.getRemaining();
+  //    byte brightness = timeLeft % 256;
+  //    if (timeLeft < CRUMBLE_TIME) {
+  //      //do nothing!
+  //      if (timeLeft < (3.5 * (CRUMBLE_TIME / 5))) {
+  //        setColorOnFace(dim(CRUMBLE_COLOR, brightness), 4);
+  //        if (timeLeft < (2.5 * (CRUMBLE_TIME / 5))) {
+  //          setColorOnFace(dim(CRUMBLE_COLOR, brightness), 1);
+  //          if (timeLeft < (1.5 * (CRUMBLE_TIME / 5))) {
+  //            setColorOnFace(dim(CRUMBLE_COLOR, brightness), 3);
+  //            if (timeLeft < (1 * (CRUMBLE_TIME / 5))) {
+  //              setColorOnFace(dim(CRUMBLE_COLOR, brightness), 5);
+  //              if (timeLeft < (.6 * (CRUMBLE_TIME / 5))) {
+  //                setColorOnFace(dim(CRUMBLE_COLOR, brightness), 0);
+  //                if (timeLeft < (0.3 * (CRUMBLE_TIME / 5))) {
+  //                  setColorOnFace(dim(CRUMBLE_COLOR, brightness), 2);
+  //                }
+  //              }
+  //            }
+  //          }
+  //        }
+  //      }
+  //    }
+  //  } else {
+  //    randomWallRole = 7; //deathtrap!
+  //  }
 }
 
+bool neighborFaces[6] = {false, false, false, false, false, false};
+
+void countNeighbors() {
+
+  neighborCount = 0;
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+
+      //if neighbor is NOT A SPAWNER
+      neighborCount++;
+      neighborFaces[f] = true;
+    } else {
+      neighborFaces[f] = false;
+    }
+  }
+}
 
 void setWallRole() {
 
-  if (randomWallRole <= 4) {
-    //GO_SIDE
-    goFace = randomWallRole;
-    goSideLoop();
+  if (neighborFaces[bottomFace] == false) { //no one directly beneath me
+    if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == false) { //but one neighbor to the left
+      goFace = leftFace;
+      goSideLoop();
+    }
+    else if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == true) { //but one neighbor to the right
+      goFace = rightFace;
+      goSideLoop();
+    }
+    else if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == true) { //but two neighbors to the left and right
+      switcherLoop();
+    }
+    else if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == false) { //no one underneath me anywhere
+      deathtrapLoop();
+    }
+  } else if (neighborFaces[bottomFace] == true) { //someone directly beneath me
+    if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == false) { //but no one to either side
+      goFace = bottomFace;
+      goSideLoop();
+    }
+    else if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == false) { //and someone to the left
+      if (neighborCount != 3) {
+        goFace = leftFace;
+      } else {
+        goFace = bottomFace;
+      }
+      goSideLoop();
+    }
+    else if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == true) { //and someone to the right
+      if (neighborCount != 3) {
+        goFace = rightFace;
+      } else {
+        goFace = bottomFace;
+      }
+      goSideLoop();
+    }
+    else if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == true) { //there's two people beneath me
 
-  } else if (randomWallRole == 5 || randomWallRole == 6) {
-    //SPLITTER
-    splitterLoop();
-  } else if (randomWallRole == 7) {
-    //DEATHTRAP
-    deathtrapLoop();
-  } else if (randomWallRole == 8 || randomWallRole == 9 || randomWallRole == 10) {
-    //SWITCHER
-    switcherLoop();
+      if (neighborCount == 3) {
+        splitterLoop();
+      }
+      else if (neighborCount == 4) {
+        if (neighborFaces[topFace] == true) {
+          splitterLoop();
+        } else {
+          switcherLoop();
+        }
+      } else if (neighborCount == 5) {
+        switcherLoop();
+      } else if (neighborCount == 6) {
+        splitterLoop();
+      }
+
+    }
+  }
+
+  //if I have nothing below me, I'm a deathtrap
+
+
+  //
+  //  if (randomWallRole <= 4) {
+  //    //GO_SIDE
+  //    goFace = randomWallRole;
+  //    goSideLoop();
+  //
+  //  } else if (randomWallRole == 5 || randomWallRole == 6) {
+  //    //SPLITTER
+  //    splitterLoop();
+  //  } else if (randomWallRole == 7) {
+  //    //DEATHTRAP
+  //    deathtrapLoop();
+  //  } else if (randomWallRole == 8 || randomWallRole == 9 || randomWallRole == 10) {
+  //    //SWITCHER
+  //    switcherLoop();
+  //  }
+
+
+}
+
+bool isFunnel (byte face) {
+  if (!isValueReceivedOnFaceExpired(face)) {
+
   }
 
 }
 
+
 void goSideLoop() {
-  if (goFace == (bottomFace + 2) % 6  || goFace == (bottomFace + 3) % 6 || goFace == (bottomFace + 4) % 6) {
-    goFace = (goFace + 3) % 6;
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      setColorOnFace(OFF, f);
+    }
   }
 
-  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 2) % 6);
-  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 3) % 6);
-  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 4) % 6);
+  setColorOnFace(FEATURE_COLOR, leftFace);
   setColorOnFace(FEATURE_COLOR, bottomFace);
-  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
-  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
-  //  setColor(FEATURE_COLOR);
+  setColorOnFace(FEATURE_COLOR, rightFace);
+
   setColorOnFace(OFF, goFace);
-  setColorOnFace(OFF, (goFace + 3) % 6);
+
+  //
+  //  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 2) % 6);
+  //  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 3) % 6);
+  //  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 4) % 6);
+  //  setColorOnFace(FEATURE_COLOR, bottomFace);
+  //  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
+  //  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+  //  //  setColor(FEATURE_COLOR);
+  //  setColorOnFace(OFF, goFace);
+  //  setColorOnFace(OFF, (goFace + 3) % 6);
 }
 
 void splitterLoop() {
