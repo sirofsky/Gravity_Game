@@ -31,6 +31,7 @@ const int LOCKOUT_TIMER_MS = 250;               // This should be long enough fo
 #define FEATURE_COLOR makeColorHSB(25, 255, 240) //very red orange
 #define BALL_COLOR makeColorHSB(90, 225, 255) //an emerald green
 #define BG_COLOR makeColorHSB(50, 200, 255) //a temple tan ideally
+#define CRUMBLE_COLOR makeColorHSB(30, 255, 100)
 
 bool amGod = false;
 byte gravitySignal[6] = {IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE};
@@ -46,6 +47,9 @@ bool didIRandomize = true;
 byte randomWallRole;
 
 byte goFace;
+
+Timer crumbleTimer;
+#define CRUMBLE_TIME 6000
 
 void setup() {
   randomize();
@@ -74,7 +78,7 @@ void wallLoop() {
     bChangeRole = false;
   }
 
-  setColor(OFF);
+  //  setColor(OFF);
   amGod = false;
 
 
@@ -90,9 +94,12 @@ void wallLoop() {
     }
   }
 
-  gravityLoop();
+  setColor(dim(BG_COLOR, 160));
+  setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 4) % 6);
 
   setWallRole();
+  gravityLoop();
 
 }
 
@@ -152,7 +159,9 @@ void gravityLoop() {
 
     //setColor(dim(WHITE,128));
 
-    setColorOnFace( WHITE , bottomFace );
+    //    setColorOnFace( WHITE , bottomFace );
+
+    randomWallRole = 10; //this one should always be the switcher
 
     // That's all for the center blink!
 
@@ -215,15 +224,15 @@ void gravityLoop() {
     }
 
 
-    if (parent_face != NO_PARENT_FACE) { //am I connected to the tower?
-      // We are synced to a remote center, so show the global north in green
-      setColorOnFace( GREEN , bottomFace );
-
+    if (parent_face != NO_PARENT_FACE) {
+      //I am connected to the tower
       didIRandomize = false;
-    } else { //I'm not connected to the tower
-      // Show our local north
-      setColorOnFace( BLUE , bottomFace );
+      crumbleTimer.set(CRUMBLE_TIME);
+    } else {
+      //I'm not connected to the tower
       randomizeWallRole();
+      crumbleAnimation();
+
     }
 
     // Set our output values relative to our north
@@ -250,6 +259,36 @@ void randomizeWallRole() {
   if (didIRandomize == false) {
     randomWallRole = random(9);
     didIRandomize = true;
+  }
+}
+
+void crumbleAnimation() {
+  if (!crumbleTimer.isExpired()) {
+    int timeLeft = crumbleTimer.getRemaining();
+    byte brightness = timeLeft % 256;
+    if (timeLeft < CRUMBLE_TIME) {
+      //do nothing!
+      if (timeLeft < (3.5 * (CRUMBLE_TIME / 5))) {
+        setColorOnFace(dim(CRUMBLE_COLOR, brightness), 4);
+        if (timeLeft < (2.5 * (CRUMBLE_TIME / 5))) {
+          setColorOnFace(dim(CRUMBLE_COLOR, brightness), 1);
+          if (timeLeft < (1.5 * (CRUMBLE_TIME / 5))) {
+            setColorOnFace(dim(CRUMBLE_COLOR, brightness), 3);
+            if (timeLeft < (1 * (CRUMBLE_TIME / 5))) {
+              setColorOnFace(dim(CRUMBLE_COLOR, brightness), 5);
+              if (timeLeft < (.6 * (CRUMBLE_TIME / 5))) {
+                setColorOnFace(dim(CRUMBLE_COLOR, brightness), 0);
+                if (timeLeft < (0.3 * (CRUMBLE_TIME / 5))) {
+                  setColorOnFace(dim(CRUMBLE_COLOR, brightness), 2);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } else {
+    randomWallRole = 7; //deathtrap!
   }
 }
 
