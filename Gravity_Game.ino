@@ -36,6 +36,9 @@ const int LOCKOUT_TIMER_MS = 250;               // This should be long enough fo
 bool amGod = false;
 byte gravitySignal[6] = {IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE};
 
+enum spawnerSignals {IM_SPAWNER, NOT_SPAWNER};
+byte spawnerSignal[6] = {NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER};
+
 enum blinkRoles {WALL, BUCKET, SPAWNER};
 byte blinkRole = WALL;
 
@@ -69,8 +72,6 @@ void setup() {
   randomize();
 }
 
-
-
 void loop() {
 
   setRole();
@@ -81,7 +82,7 @@ void loop() {
 
   //send data
   FOREACH_FACE(f) {
-    byte sendData = gravitySignal[f];
+    byte sendData = (spawnerSignal[f] << 3) + (gravitySignal[f]);
     setValueSentOnFace(sendData, f);
   }
 }
@@ -95,8 +96,9 @@ void wallLoop() {
   //  setColor(OFF);
   amGod = false;
 
-
   FOREACH_FACE(f) {
+    spawnerSignal[f] = NOT_SPAWNER;
+
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
       byte bucketNeighbor = (f + 2) % 6; //and what about their neighbor?
       if (isBucket(bucketNeighbor)) {
@@ -108,9 +110,9 @@ void wallLoop() {
     }
   }
 
-  setColor(dim(BG_COLOR, 160));
-  setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 2) % 6);
-  setColorOnFace(dim(BG_COLOR, 100), (bottomFace + 4) % 6);
+  setColor(dim(BG_COLOR, 190));
+  setColorOnFace(dim(BG_COLOR, 140), (bottomFace + 2) % 6);
+  setColorOnFace(dim(BG_COLOR, 140), (bottomFace + 4) % 6);
 
   countNeighbors();
   setWallRole();
@@ -121,9 +123,6 @@ void wallLoop() {
   topFace = (bottomFace + 3) % 6;
   topRightFace = (bottomFace + 4) % 6;
   rightFace = (bottomFace + 5) % 6;
-
-
-
 }
 
 bool isBucket (byte face) {
@@ -148,6 +147,7 @@ void bucketLoop() {
 
   FOREACH_FACE(f) {
     gravitySignal[f] = 6; //6 means bucket, I don't make the rules
+    spawnerSignal[f] = NOT_SPAWNER;
   }
 }
 
@@ -156,6 +156,13 @@ void spawnerLoop() {
     blinkRole = WALL;
     bChangeRole = false;
   }
+  setValueSentOnAllFaces(7);
+
+  FOREACH_FACE(f) {
+    spawnerSignal[f] = IM_SPAWNER;
+  }
+
+  gravityLoop();
 
   setColor(dim(BALL_COLOR, 120));
 
@@ -278,7 +285,7 @@ void gravityLoop() {
 
     } else {
       //I'm not connected to the tower
-      randomizeWallRole();
+      //      randomizeWallRole();
       crumbleAnimation();
 
       treasurePrimed = true;
@@ -303,13 +310,6 @@ void gravityLoop() {
       }
     }
   }
-}
-
-void randomizeWallRole() {
-  //  if (didIRandomize == false) {
-  //    randomWallRole = random(9);
-  //    didIRandomize = true;
-  //  }
 }
 
 void crumbleAnimation() { //9% of the code! Too big!
@@ -344,18 +344,19 @@ void crumbleAnimation() { //9% of the code! Too big!
 
 bool neighborFaces[6] = {false, false, false, false, false, false};
 
-void countNeighbors() {
+void countNeighbors() { //count how many neighbors are around me and keep it in an array
 
   neighborCount = 0;
 
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
+    if (getSpawnerSignal(getLastValueReceivedOnFace(f)) == NOT_SPAWNER) {
+      if (!isValueReceivedOnFaceExpired(f)) {
 
-      //if neighbor is NOT A SPAWNER
-      neighborCount++;
-      neighborFaces[f] = true;
-    } else {
-      neighborFaces[f] = false;
+        neighborCount++;
+        neighborFaces[f] = true;
+      } else {
+        neighborFaces[f] = false;
+      }
     }
   }
 }
@@ -377,77 +378,39 @@ void setWallRole() {
     else if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == false) { //no one underneath me anywhere
       deathtrapLoop();
     }
+
   } else if (neighborFaces[bottomFace] == true) { //someone directly beneath me
     if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == false) { //but no one to either side
       goFace = bottomFace;
       goSideLoop();
     }
     else if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == false) { //and someone to the left
-      if (neighborCount != 3) {
-        goFace = leftFace;
-      } else {
-        goFace = bottomFace;
-      }
+      goFace = leftFace;
       goSideLoop();
     }
     else if (neighborFaces[leftFace] == false && neighborFaces[rightFace] == true) { //and someone to the right
-      if (neighborCount != 3) {
-        goFace = rightFace;
-      } else {
-        goFace = bottomFace;
-      }
+      goFace = rightFace;
       goSideLoop();
     }
-    else if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == true) { //there's two people beneath me
+    else if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == true) { //there's three people beneath me
 
-      if (neighborCount == 3) {
+      if (neighborCount == 3) { //and somehow that's it
         splitterLoop();
       }
       else if (neighborCount == 4) {
-        if (neighborFaces[topFace] == true) {
+        if (neighborFaces[topFace] == true) { //one blink is directly above me
           splitterLoop();
-        } else {
+        } else { //one blink is above me to either side
           switcherLoop();
         }
-      } else if (neighborCount == 5) {
-        switcherLoop();
-      } else if (neighborCount == 6) {
+      } else if (neighborCount == 5) { //two blinks are above me
+        deathtrapLoop();
+      } else if (neighborCount == 6) { //I'm fully surrounded
         splitterLoop();
       }
-
     }
   }
-
-  //if I have nothing below me, I'm a deathtrap
-
-
-  //
-  //  if (randomWallRole <= 4) {
-  //    //GO_SIDE
-  //    goFace = randomWallRole;
-  //    goSideLoop();
-  //
-  //  } else if (randomWallRole == 5 || randomWallRole == 6) {
-  //    //SPLITTER
-  //    splitterLoop();
-  //  } else if (randomWallRole == 7) {
-  //    //DEATHTRAP
-  //    deathtrapLoop();
-  //  } else if (randomWallRole == 8 || randomWallRole == 9 || randomWallRole == 10) {
-  //    //SWITCHER
-  //    switcherLoop();
-  //  }
-
-
 }
-
-bool isFunnel (byte face) {
-  if (!isValueReceivedOnFaceExpired(face)) {
-
-  }
-
-}
-
 
 void goSideLoop() {
 
@@ -460,19 +423,7 @@ void goSideLoop() {
   setColorOnFace(FEATURE_COLOR, leftFace);
   setColorOnFace(FEATURE_COLOR, bottomFace);
   setColorOnFace(FEATURE_COLOR, rightFace);
-
   setColorOnFace(OFF, goFace);
-
-  //
-  //  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 2) % 6);
-  //  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 3) % 6);
-  //  setColorOnFace(dim(BG_COLOR, 160), (bottomFace + 4) % 6);
-  //  setColorOnFace(FEATURE_COLOR, bottomFace);
-  //  setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
-  //  setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
-  //  //  setColor(FEATURE_COLOR);
-  //  setColorOnFace(OFF, goFace);
-  //  setColorOnFace(OFF, (goFace + 3) % 6);
 }
 
 void splitterLoop() {
@@ -535,5 +486,9 @@ void setRole() {
 }
 
 byte getGravitySignal(byte data) { //all the gravity communication happens here
-  return (data & 7);
+  return (data & 7); //returns bits D, E, and F
+}
+
+byte getSpawnerSignal(byte data) {
+  return ((data >> 3) & 1); //returns bit C
 }
