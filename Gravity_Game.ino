@@ -1,15 +1,6 @@
-// Demo showing how to coordinate a global compass direction across a group of blinks.
-
-// Each blink normally shows its own north face (face #0) in blue
-// Pressing the button on a blink makes it the "center" and all the other
-// connected blinks will sync to its "north" and show that in green.
-
-// Each tile (starting with the center) sends out the compass angle on each face,
-// so the center blink would send angle 0 on its face 0. When a tile recieves a
-// compass angle from a parent, it uses it to compute which one of its own faces
-// is pointing north, and then uses that to send a correct global angle to its children.
-// For example, if a tile recieves an angle 0 on a face, then it knows the opsite face is
-// pointing north (angle 0).
+//TREASURE TUMBLE
+//Game code by Jacob Surovsky
+//Gravity code by Josh Levine
 
 const byte NO_PARENT_FACE = FACE_COUNT ;   // Signals that we do not currently have a parent
 
@@ -89,6 +80,14 @@ void setup() {
 void loop() {
 
   setRole();
+//  gravityLoop();
+
+
+  leftFace = (bottomFace + 1) % 6;
+  topLeftFace = (bottomFace + 2) % 6;
+  topFace = (bottomFace + 3) % 6;
+  topRightFace = (bottomFace + 4) % 6;
+  rightFace = (bottomFace + 5) % 6;
 
   //  if (buttonDoubleClicked()) {
   //    amGod = !amGod;
@@ -136,7 +135,7 @@ void wallLoop() {
 
   countNeighbors();
   setWallRole();
-  gravityLoop();
+    gravityLoop();
 
   FOREACH_FACE(f) {
 
@@ -188,13 +187,6 @@ void wallLoop() {
   }
 
   treasureTumble(); //roll credits!
-
-  leftFace = (bottomFace + 1) % 6;
-  topLeftFace = (bottomFace + 2) % 6;
-  topFace = (bottomFace + 3) % 6;
-  topRightFace = (bottomFace + 4) % 6;
-  rightFace = (bottomFace + 5) % 6;
-
 }
 
 bool isBucket (byte face) {
@@ -209,18 +201,77 @@ bool isBucket (byte face) {
   }
 }
 
+byte treasureCount = 0;
+bool bCountTreasure;
+
 void bucketLoop() {
-  if (bChangeRole) {
-    blinkRole = SPAWNER;
-    bChangeRole = false;
-  }
+//  if (bChangeRole) {
+//    blinkRole = SPAWNER;
+//    bChangeRole = false;
+//  }
+//
+//  gravityLoop();
+//
+//  setColor(FEATURE_COLOR);
+//  setColorOnFace(BG_COLOR, bottomFace);
+//  
+//
+//  if (buttonDoubleClicked()) {
+//    treasureCount = 0;
+//  }
+//
+//  FOREACH_FACE(f) {
+//    gravitySignal[f] = 6; //6 means bucket, I don't make the rules
+//    spawnerSignal[f] = NOT_SPAWNER;
+//    //    treasureSignal[f] = BLANK;
+//
+//    if (treasureSignal[f] == BLANK) {
+//      //listen for sending, go to receiving
+//
+//      if (!isValueReceivedOnFaceExpired(f)) {
+//        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == SENDING) {
+//          treasureSignal[f] = RECEIVING;
+//          bCountTreasure = true;
+//        }
+//      }
+//    } else if (treasureSignal[f] == RECEIVING) {
+//      //listen for treasure, go to blank
+//      //if no neighbor, go back to blank
+//
+//      if (!isValueReceivedOnFaceExpired(f)) {
+//        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == TREASURE) {
+//          setColor(WHITE);
+//          treasureSignal[f] = BLANK;
+//          countTreasure();
+//        }
+//      }
+//    }
+//  }
+//
+//  if (treasureCount > 0) {
+//    setColorOnFace(TREASURE_COLOR, bottomFace);
+//    if (treasureCount > 3) {
+//      setColorOnFace(TREASURE_COLOR, leftFace);
+//      if (treasureCount > 6) {
+//        setColorOnFace(TREASURE_COLOR, rightFace);
+//        if (treasureCount > 9) {
+//          setColorOnFace(TREASURE_COLOR, topLeftFace);
+//          if (treasureCount > 12) {
+//            setColorOnFace(TREASURE_COLOR, topRightFace);
+//            if (treasureCount > 15) {
+//              setColorOnFace(TREASURE_COLOR, topFace);
+//            }
+//          }
+//        }
+//      }
+//    }
+//  }
+}
 
-  setColor(ORANGE);
-
-  FOREACH_FACE(f) {
-    gravitySignal[f] = 6; //6 means bucket, I don't make the rules
-    spawnerSignal[f] = NOT_SPAWNER;
-    //    treasureSignal[f] = BLANK;
+void countTreasure() {
+  if (bCountTreasure == true) {
+    treasureCount = treasureCount + 1;
+    bCountTreasure = false;
   }
 }
 
@@ -237,7 +288,7 @@ void spawnerLoop() {
     //    treasureSignal[f] = BLANK;
   }
 
-  gravityLoop();
+    gravityLoop();
 
   setColor(dim(TREASURE_COLOR, 120));
 
@@ -247,29 +298,6 @@ void spawnerLoop() {
   } else {
     setColor(dim(TREASURE_COLOR, 120));
   }
-
-
-  //  if (dropTreasure == true) {
-  //    if (treasurePrimed == true) { //if I'm connected to the tower, do this!
-  //
-  //      treasureSignal[bottomFace] = SENDING;
-  //      setColorOnFace(MAGENTA, bottomFace);
-  //
-  //      if (getTreasureSignal(getLastValueReceivedOnFace(bottomFace) == RECEIVING)) {
-  //        treasureSignal[bottomFace] = TREASURE;
-  //        setColorOnFace(GREEN, bottomFace);
-  //        dropTreasure = false;
-  //        treasurePrimed = false;
-  //      }
-  //      else if (getTreasureSignal(getLastValueReceivedOnFace(bottomFace) == BLANK)) {
-  //        treasureSignal[bottomFace] = BLANK;
-  //        setColorOnFace(BLUE, bottomFace);
-  //      }
-  //    } else if (treasurePrimed == false) {
-  //      treasureSignal[bottomFace] = BLANK;
-  //      setColorOnFace(RED, bottomFace);
-  //    }
-  //  }
 
   treasureSignal[bottomFace] = BLANK;
 
