@@ -39,8 +39,8 @@ byte gravitySignal[6] = {IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VALUE, IR_IDLE_VA
 enum spawnerSignals {IM_SPAWNER, NOT_SPAWNER};
 byte spawnerSignal[6] = {NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER, NOT_SPAWNER};
 
-enum treasureSignals {TREASURE, NO_TREASURE};
-byte treasureSignal[6] = {NO_TREASURE, NO_TREASURE, NO_TREASURE, NO_TREASURE, NO_TREASURE, NO_TREASURE};
+enum treasureSignals {SENDING, RECEIVING, TREASURE, BLANK};
+byte treasureSignal[6] = {BLANK, BLANK, BLANK, BLANK, BLANK, BLANK,};
 
 enum blinkRoles {WALL, BUCKET, SPAWNER};
 byte blinkRole = WALL;
@@ -96,7 +96,7 @@ void loop() {
 
   //send data
   FOREACH_FACE(f) {
-    byte sendData = (treasureSignal[f] << 4) + (spawnerSignal[f] << 3) + (gravitySignal[f]);
+    byte sendData = (treasureSignal[f] << 4) | (spawnerSignal[f] << 3) | (gravitySignal[f]);
     setValueSentOnFace(sendData, f);
   }
 }
@@ -112,20 +112,18 @@ void wallLoop() {
 
 
   setColor(dim(BG_COLOR, 190));
-  setColorOnFace(dim(BG_COLOR, 140), (bottomFace + 2) % 6);
-  setColorOnFace(dim(BG_COLOR, 140), (bottomFace + 4) % 6);
+  setColorOnFace(dim(BG_COLOR, 140), topLeftFace);
+  setColorOnFace(dim(BG_COLOR, 140), topRightFace);
 
 
   FOREACH_FACE(f) {
     spawnerSignal[f] = NOT_SPAWNER;
-    treasureSignal[f] = NO_TREASURE;
+    //    treasureSignal[f] = BLANK;
 
     if (isBucket(f)) { //do I have a neighbor and are they shouting IM_BUCKET?
       byte bucketNeighbor = (f + 2) % 6; //and what about their neighbor?
       if (isBucket(bucketNeighbor)) {
         bottomFace = (f + 1) % 6;
-        //        randomWallRole = 10;
-        //        imSwitcher = true;
         amGod = true; //I get to decide what direction gravity is for the entire game! Yippee!
       }
     }
@@ -141,11 +139,50 @@ void wallLoop() {
   gravityLoop();
 
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getTreasureSignal(getLastValueReceivedOnFace(f)) == TREASURE) { //If I hear treasure, time to start dropping treasure
-        startFace = f;
-        stepCounter = 0;
-        isTreasureOnMyBlink = true;
+
+    if (treasureSignal[f] == BLANK) {
+      //listen for sending, go to receiving
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == SENDING) {
+          treasureSignal[f] = RECEIVING;
+        }
+      }
+    } else if (treasureSignal[f] == SENDING) {
+      //listen for receiving, go to treasure
+      //if no neighbor, go back to blank
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == RECEIVING) {
+          treasureSignal[f] = TREASURE;
+        }
+      } else if (isValueReceivedOnFaceExpired(f)) {
+        treasureSignal[f] = BLANK;
+      }
+    } else if (treasureSignal[f] == RECEIVING) {
+      //listen for treasure, go to blank
+      //if no neighbor, go back to blank
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == TREASURE) {
+          treasureSignal[f] = BLANK;
+          startFace = f;
+          stepCounter = 0;
+          isTreasureOnMyBlink = true;
+        }
+      } else if (isValueReceivedOnFaceExpired(f)) {
+        treasureSignal[f] = BLANK;
+      }
+    } else if (treasureSignal[f] == TREASURE) {
+      //listen for blank, go to blank
+      //if no neighbor, go back to blank
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == BLANK) {
+          treasureSignal[f] = BLANK;
+        }
+      } else if (isValueReceivedOnFaceExpired(f)) {
+        treasureSignal[f] = BLANK;
       }
     }
   }
@@ -183,7 +220,7 @@ void bucketLoop() {
   FOREACH_FACE(f) {
     gravitySignal[f] = 6; //6 means bucket, I don't make the rules
     spawnerSignal[f] = NOT_SPAWNER;
-    treasureSignal[f] = NO_TREASURE;
+    //    treasureSignal[f] = BLANK;
   }
 }
 
@@ -197,28 +234,80 @@ void spawnerLoop() {
   FOREACH_FACE(f) {
     gravitySignal[f] = 7; //7 means ignore me I don't speak about gravity
     spawnerSignal[f] = IM_SPAWNER;
-    treasureSignal[f] = NO_TREASURE;
+    //    treasureSignal[f] = BLANK;
   }
 
   gravityLoop();
 
   setColor(dim(TREASURE_COLOR, 120));
 
+  //setting treasure animation
   if (treasurePrimed == true) {
     treasurePrimedAnimation();
   } else {
     setColor(dim(TREASURE_COLOR, 120));
   }
 
+
+  //  if (dropTreasure == true) {
+  //    if (treasurePrimed == true) { //if I'm connected to the tower, do this!
+  //
+  //      treasureSignal[bottomFace] = SENDING;
+  //      setColorOnFace(MAGENTA, bottomFace);
+  //
+  //      if (getTreasureSignal(getLastValueReceivedOnFace(bottomFace) == RECEIVING)) {
+  //        treasureSignal[bottomFace] = TREASURE;
+  //        setColorOnFace(GREEN, bottomFace);
+  //        dropTreasure = false;
+  //        treasurePrimed = false;
+  //      }
+  //      else if (getTreasureSignal(getLastValueReceivedOnFace(bottomFace) == BLANK)) {
+  //        treasureSignal[bottomFace] = BLANK;
+  //        setColorOnFace(BLUE, bottomFace);
+  //      }
+  //    } else if (treasurePrimed == false) {
+  //      treasureSignal[bottomFace] = BLANK;
+  //      setColorOnFace(RED, bottomFace);
+  //    }
+  //  }
+
+  treasureSignal[bottomFace] = BLANK;
+
   if (dropTreasure == true) {
     if (treasurePrimed == true) {
-      FOREACH_FACE(f) {
-        treasureSignal[bottomFace] = TREASURE;
+
+      treasureSignal[bottomFace] = SENDING;
+
+    }
+  }
+
+
+  FOREACH_FACE(f) {
+
+    if (treasureSignal[f] == SENDING) {
+      //listen for receiving, go to treasure
+      //if no neighbor, go back to blank
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == RECEIVING) {
+          treasureSignal[f] = TREASURE;
+          dropTreasure = false;
+          treasurePrimed = false;
+        }
+      } else if (isValueReceivedOnFaceExpired(f)) {
+        treasureSignal[f] = BLANK;
       }
-      dropTreasure = false;
-      treasurePrimed = false;
-    } else if (treasurePrimed == false) {
-      treasureSignal[bottomFace] = NO_TREASURE;
+    } else if (treasureSignal[f] == TREASURE) {
+      //listen for blank, go to blank
+      //if no neighbor, go back to blank
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == BLANK) {
+          treasureSignal[f] = BLANK;
+        }
+      } else if (isValueReceivedOnFaceExpired(f)) {
+        treasureSignal[f] = BLANK;
+      }
     }
   }
 }
@@ -316,17 +405,10 @@ void gravityLoop() {
     if (parent_face != NO_PARENT_FACE) {
       //I am connected to the tower
       didIRandomize = false;
-      //      crumbleTimer.set(CRUMBLE_TIME);
-      //      treasurePrimed = false;
       dropTreasure = true;
-
     } else {
       //I'm not connected to the tower
-      //      randomizeWallRole();
-      //      crumbleAnimation();
-
       treasurePrimed = true;
-
     }
 
     // Set our output values relative to our north
@@ -347,36 +429,6 @@ void gravityLoop() {
       }
     }
   }
-}
-
-void crumbleAnimation() { //9% of the code! Too big!
-  //  if (!crumbleTimer.isExpired()) {
-  //    int timeLeft = crumbleTimer.getRemaining();
-  //    byte brightness = timeLeft % 256;
-  //    if (timeLeft < CRUMBLE_TIME) {
-  //      //do nothing!
-  //      if (timeLeft < (3.5 * (CRUMBLE_TIME / 5))) {
-  //        setColorOnFace(dim(CRUMBLE_COLOR, brightness), 4);
-  //        if (timeLeft < (2.5 * (CRUMBLE_TIME / 5))) {
-  //          setColorOnFace(dim(CRUMBLE_COLOR, brightness), 1);
-  //          if (timeLeft < (1.5 * (CRUMBLE_TIME / 5))) {
-  //            setColorOnFace(dim(CRUMBLE_COLOR, brightness), 3);
-  //            if (timeLeft < (1 * (CRUMBLE_TIME / 5))) {
-  //              setColorOnFace(dim(CRUMBLE_COLOR, brightness), 5);
-  //              if (timeLeft < (.6 * (CRUMBLE_TIME / 5))) {
-  //                setColorOnFace(dim(CRUMBLE_COLOR, brightness), 0);
-  //                if (timeLeft < (0.3 * (CRUMBLE_TIME / 5))) {
-  //                  setColorOnFace(dim(CRUMBLE_COLOR, brightness), 2);
-  //                }
-  //              }
-  //            }
-  //          }
-  //        }
-  //      }
-  //    }
-  //  } else {
-  //    randomWallRole = 7; //deathtrap!
-  //  }
 }
 
 bool neighborFaces[6] = {false, false, false, false, false, false};
@@ -400,7 +452,13 @@ void countNeighbors() { //count how many neighbors are around me and keep it in 
 
 void setWallRole() {
 
-  if (neighborFaces[bottomFace] == false) { //no one directly beneath me
+  if (isAlone()) {
+    setColor(dim(BG_COLOR, 190));
+    setColorOnFace(dim(BG_COLOR, 140), topLeftFace);
+    setColorOnFace(dim(BG_COLOR, 140), topRightFace);
+  }
+
+  else if (neighborFaces[bottomFace] == false) { //no one directly beneath me
     if (neighborFaces[leftFace] == true && neighborFaces[rightFace] == false) { //but one neighbor to the left
       goFace = leftFace;
       goSideLoop();
@@ -450,8 +508,6 @@ void setWallRole() {
 }
 
 
-
-
 void goSideLoop() {
 
   FOREACH_FACE(f) {
@@ -465,8 +521,6 @@ void goSideLoop() {
   setColorOnFace(FEATURE_COLOR, rightFace);
   setColorOnFace(OFF, goFace);
 
-
-
   if (stepCounter == 0) {
     treasureFaces[startFace] = true;
   }
@@ -479,14 +533,11 @@ void goSideLoop() {
   }
   else if (stepCounter == 3) {
     treasureFaces[goFace] = true;
-    treasureSignal[goFace] = TREASURE;
+    treasureSignal[goFace] = SENDING;
   }
   else if (stepCounter == 4) {
 
     isTreasureOnMyBlink = false;
-  }
-  else if (stepCounter == 5) {
-
   }
 }
 
@@ -494,23 +545,112 @@ void splitterLoop() {
   setColorOnFace(PURPLE, (bottomFace + 1) % 6);
   setColorOnFace(PURPLE, (bottomFace + 5) % 6);
   setColorOnFace(NICE_BLUE, bottomFace);
+
+  if (stepCounter == 0) {
+    treasureFaces[startFace] = true;
+  }
+  else if (stepCounter == 1) {
+    treasureFaces[startFace] = true;
+  }
+  else if (stepCounter == 2) {
+    treasureFaces[startFace] = true;
+    //    treasureFaces[bottomFace] = true;
+    //    treasureFaces[leftFace] = true;
+    //    treasureFaces[rightFace] = true;
+    setColorOnFace(WHITE, bottomFace);
+    setColorOnFace(WHITE, leftFace);
+    setColorOnFace(WHITE, rightFace);
+  }
+  else if (stepCounter == 3) {
+    //    treasureFaces[bottomFace] = true;
+    //    treasureFaces[leftFace] = true;
+    //    treasureFaces[rightFace] = true;
+    setColorOnFace(WHITE, bottomFace);
+    setColorOnFace(WHITE, leftFace);
+    setColorOnFace(WHITE, rightFace);
+    treasureSignal[bottomFace] = SENDING;
+    treasureSignal[leftFace] = SENDING;
+    treasureSignal[rightFace] = SENDING;
+  }
+  else if (stepCounter == 4) {
+    isTreasureOnMyBlink = false;
+  }
 }
 
 void deathtrapLoop() {
   setColorOnFace(WHITE, bottomFace);
-  setColorOnFace(RED, (bottomFace + 1) % 6);
-  setColorOnFace(RED, (bottomFace + 5) % 6);
+  setColorOnFace(RED, leftFace);
+  setColorOnFace(RED, rightFace);
+
+  if (stepCounter == 0) {
+    treasureFaces[startFace] = true;
+  }
+  else if (stepCounter == 1) {
+    treasureFaces[startFace] = true;
+  }
+  else if (stepCounter == 2) {
+    byte brightness = sin8_C(map(millis() % TREASURE_TIME, 0, TREASURE_TIME, 0, 255)); //I mean sure this can be it for now
+    setColor(dim(RED, brightness));
+    setColorOnFace(OFF, bottomFace);
+  }
+  else if (stepCounter == 3) {
+    isTreasureOnMyBlink = false;
+  }
+  else if (stepCounter == 4) {
+
+  }
 }
 
 bool goLeft;
+bool bSwitchDirection = false;
 
 void switcherLoop() {
   if (goLeft == true) {
-    setColorOnFace(PURPLE, (bottomFace + 4) % 6);
-    setColorOnFace(FEATURE_COLOR, (bottomFace + 1) % 6);
-  } else {
-    setColorOnFace(PURPLE, (bottomFace + 2) % 6);
-    setColorOnFace(FEATURE_COLOR, (bottomFace + 5) % 6);
+    setColorOnFace(PURPLE, topRightFace);
+    setColorOnFace(FEATURE_COLOR, leftFace);
+
+    if (stepCounter == 0) {
+      treasureFaces[startFace] = true;
+    }
+    else if (stepCounter == 1) {
+      treasureFaces[startFace] = true;
+    }
+    else if (stepCounter == 2) {
+      treasureFaces[startFace] = true;
+      treasureFaces[leftFace] = true;
+    }
+    else if (stepCounter == 3) {
+      treasureFaces[leftFace] = true;
+      treasureSignal[leftFace] = SENDING;
+      bSwitchDirection = true;
+    }
+    else if (stepCounter == 4) {
+      isTreasureOnMyBlink = false;
+
+    }
+  } else if (goLeft == false) {
+    setColorOnFace(PURPLE, topLeftFace);
+    setColorOnFace(FEATURE_COLOR, rightFace);
+
+    if (stepCounter == 0) {
+      treasureFaces[startFace] = true;
+    }
+    else if (stepCounter == 1) {
+      treasureFaces[startFace] = true;
+    }
+    else if (stepCounter == 2) {
+      treasureFaces[startFace] = true;
+      treasureFaces[rightFace] = true;
+    }
+    else if (stepCounter == 3) {
+      treasureFaces[rightFace] = true;
+      treasureSignal[rightFace] = SENDING;
+      bSwitchDirection = true;
+    }
+    else if (stepCounter == 4) {
+      isTreasureOnMyBlink = false;
+
+    }
   }
 }
 
@@ -524,10 +664,6 @@ void treasureTumble() {
 
     }
 
-//    Timer treasureBrightnessTime;
-
-    //   byte treasureBrightness = sin8_C(map((millis() % (TREASURE_TIME * 3)), 0, (TREASURE_TIME * 3), 0, 255));
-
     FOREACH_FACE(f) {
       if (treasureFaces[f] == true) {
         setColorOnFace(TREASURE_COLOR, f);
@@ -535,10 +671,17 @@ void treasureTumble() {
     }
 
   } else if (isTreasureOnMyBlink == false) {
+    switchDirection();
+    //    FOREACH_FACE(f) {
+    //      treasureSignal[f] = BLANK;
+    //    }
+  }
+}
 
-    FOREACH_FACE(f) {
-      treasureSignal[f] = NO_TREASURE;
-    }
+void switchDirection() { //look, it works even if it's annoyingly complicated
+  if (bSwitchDirection == true) {
+    goLeft = !goLeft;
+    bSwitchDirection = false;
   }
 }
 
@@ -586,5 +729,5 @@ byte getSpawnerSignal(byte data) {
 }
 
 byte getTreasureSignal(byte data) {
-  return ((data >> 4) & 1); //returns bit B
+  return ((data >> 4) & 3); //returns bits A and B?
 }
