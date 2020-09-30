@@ -23,10 +23,10 @@ The goal of the game is to fill your treasure bin with treasure before your oppo
 Players take turns performing actions until the game is over.
 
 There are four kinds of chamber pieces:
-GO-SIDES: Go sides are orange on their bottom half, with dark faces pointing wherever the treasure will go. Picture them like funnels or ledges to redirect the treasure.
-SWITCHERS: Switchers have one purple face and one orange face. They will direct treasure falling into them down in the direction of their orange face, then they will switch to point the other way for the next treasure.
-SPLITTERS: Splitters are purple and blue. When treasure falls into them, they send 3 treasure pieces out through their 3 bottom faces.
-DEATHTRAPS: Deathtraps are red and white. Deathtraps destroy any treasure that falls into them.
+<br> GO-SIDES: Go sides are orange on their bottom half, with dark faces pointing wherever the treasure will go. Picture them like funnels or ledges to redirect the treasure.
+<br>SWITCHERS: Switchers have one purple face and one orange face. They will direct treasure falling into them down in the direction of their orange face, then they will switch to point the other way for the next treasure.
+<br>SPLITTERS: Splitters are purple and blue. When treasure falls into them, they send 3 treasure pieces out through their 3 bottom faces.
+<br>DEATHTRAPS: Deathtraps are red and white. Deathtraps destroy any treasure that falls into them.
 
-Build towers and see how treasure falls into the bins.
-Double click a treasure bin to reset its contents. 
+<br>Build towers and see how treasure falls into the bins.
+<br>Double click a treasure bin to reset its contents. 
