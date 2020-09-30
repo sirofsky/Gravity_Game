@@ -13,32 +13,20 @@ Treasure Tumble is intended to be played vertically building off of your sushi r
 
 <strong> SETUP </strong> <br>
 Load the game onto all of your blinks, and lay out your magnetic sushi roll case on a flat surface.
-Take 2 blinks and long press them until they flash white. When you release them they should both be Orange with one Green face. These are you treasure bins. Place both bins on their edge on the sushi roll, and place one more blink between them elevated above the sushi roll. 
-The orange faces on the treasure bins should both now point down towards the table. This is the foundation of the ancient treasure chamber.
+Take 2 blinks and long press them until they flash white. When you release them they should both be Orange with one Yellow face. These are you Treasure Bins. Place both bins on their edge on the sushi roll, and place one more blink between them elevated above the sushi roll. 
+The yellow faces on the treasure bins should both now point down towards the table. This is the foundation of the ancient treasure chamber.
 Each player will claim a treasure bin as their own, either on the left or right. 
+Take 1 blink and long press it twice. It should be green with one swirling face. This is your Spawner piece. Set it aside for now.
 
-<strong> GAMEPLAY </strong><br>
+<strong> PLAY </strong><br>
 The goal of the game is to fill your treasure bin with treasure before your opponent. 
 Players take turns performing actions until the game is over.
-On your turn, you may choose to either ADD or RECONSTRUCT 
 
-If you choose to ADD, you may take a blink not yet stacked up on the treasure tower and double click it to unveil a mechanism.
-There are 4 kinds of obstacles <br>
-GO_SIDE: the treasure falls in the direction of the illuminated face. If the face is purple, the treasure will fall straight down.  <br>
-SPINNER: (two faces opposite each other) each time treasure falls through it, it rotates clockwise.  <br>
-SPLITTER: (two green faces both pointing down to both sides) treasure falls in both directions <br>
-DEATHTRAP: (a red X) the treasure disappears forever
+There are four kinds of chamber pieces:
+GO-SIDES: Go sides are orange on their bottom half, with dark faces pointing wherever the treasure will go. Picture them like funnels or ledges to redirect the treasure.
+SWITCHERS: Switchers have one purple face and one orange face. They will direct treasure falling into them down in the direction of their orange face, then they will switch to point the other way for the next treasure.
+SPLITTERS: Splitters are purple and blue. When treasure falls into them, they send 3 treasure pieces out through their 3 bottom faces.
+DEATHTRAPS: Deathtraps are red and white. Deathtraps destroy any treasure that falls into them.
 
-Note: Orange faces mean the treasure will fall in the direction of the face. Purple faces mean the treasure will fall straight down.
-
-Go_Side and Spinner pieces retain their orientation no matter how you place them. For example, if you'd like a treasure piece to fall towards the left instead of the right, simply physically rotate a Go_Side blink so it's pointing in the desired direction.
-
-Then you may single click that blink to uncover a piece of treasure, and add that blink to the treasure tower. Once it's been added to the tower the treasure will either tumble down into one of the buckets or fall into uncharted territory. 
-
-If you choose to RECONSTRUCT, you may remove a chunk of blinks from the treasure tower. The chunk can be any number of blinks, however you cannot split the tower in two and you cannot remove any of the blinks that make up the foundation of the tower. 
-
-You may then double click any number of the blinks in the chunk to randomly change its mechanism and single click just one of the blinks to uncover a piece of treasure. If you remove a chunk of 5 or more blinks, you may single click two blinks to uncover two pieces of treasure. Then reattach the chunk of blinks to the tower. However, you may not reattach the chunk in the same spot you removed it from. The treasure piece(s) will either tumble down into one of the buckets or fall into uncharted territory. 
-
-If in attaching a blink or chunk of blinks any part of the tower collapses, the player responsible must empty their bin of treasure by double clicking it. Play will then continue by adding or reconstructing the treasure tower.
-
-The winner is whoever fills their bucket of treasure first. 
+Build towers and see how treasure falls into the bins.
+Double click a treasure bin to reset its contents. 
