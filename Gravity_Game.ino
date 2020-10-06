@@ -124,10 +124,9 @@ void wallLoop() {
     treasureFaces[f] = false;
   }
 
-
-  countNeighbors();
-  setWallRole();
-  gravityLoop();
+  countNeighbors(); //counts how many neighbors each blink has and stores that information
+  setWallRole(); //figures out what role to assign the blink based off of the neighbors counted
+  gravityLoop(); //sets gracity and stuff
 
   FOREACH_FACE(f) {
 
@@ -137,6 +136,9 @@ void wallLoop() {
       if (!isValueReceivedOnFaceExpired(f)) {
         if (getTreasureSignal(getLastValueReceivedOnFace(f)) == SENDING) {
           treasureSignal[f] = RECEIVING;
+        }
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == TREASURE) {
+          treasureSignal[f] = BLANK;
         }
       }
     } else if (treasureSignal[f] == SENDING) {
@@ -175,10 +177,10 @@ void wallLoop() {
       } else if (isValueReceivedOnFaceExpired(f)) {
         treasureSignal[f] = BLANK;
       }
-    }
+    } 
   }
 
-  treasureTumble(); //roll credits!
+  treasureTumble(); //listens for if treasure is on the face and runs the animation cycle
 }
 
 bool isBucket (byte face) {
@@ -242,15 +244,15 @@ void bucketLoop() {
 
   if (treasureCount > 0) {
     setColorOnFace(TREASURE_COLOR, bottomFace);
-    if (treasureCount > 3) {
+    if (treasureCount > 5) {
       setColorOnFace(TREASURE_COLOR, leftFace);
-      if (treasureCount > 6) {
+      if (treasureCount > 10) {
         setColorOnFace(TREASURE_COLOR, rightFace);
-        if (treasureCount > 9) {
+        if (treasureCount > 15) {
           setColorOnFace(TREASURE_COLOR, topLeftFace);
-          if (treasureCount > 12) {
+          if (treasureCount > 20) {
             setColorOnFace(TREASURE_COLOR, topRightFace);
-            if (treasureCount > 15) {
+            if (treasureCount > 25) {
               setColorOnFace(TREASURE_COLOR, topFace);
             }
           }
@@ -300,7 +302,6 @@ void spawnerLoop() {
 
     }
   }
-
 
   FOREACH_FACE(f) {
 
@@ -476,6 +477,7 @@ void setWallRole() {
     setColor(dim(BG_COLOR, 190));
     setColorOnFace(dim(BG_COLOR, 140), topLeftFace);
     setColorOnFace(dim(BG_COLOR, 140), topRightFace);
+
   }
 
   else if (neighborFaces[bottomFace] == false) { //no one directly beneath me
@@ -528,7 +530,7 @@ void setWallRole() {
           switcherLoop();
         }
       } else if (neighborCount == 5) { //two blinks are above me, total of 5 neighbors
-        deathtrapLoop();
+        switcherLoop();
       } else if (neighborCount == 6) { //I'm fully surrounded, total of six neighbors
         splitterLoop();
       }
@@ -619,7 +621,7 @@ void deathtrapLoop() {
     treasureFaces[startFace] = true;
   }
   else if (stepCounter == 2) {
-    //    byte brightness = sin8_C(map(millis() % TREASURE_TIME, 0, TREASURE_TIME, 0, 255)); //I mean sure this can be it for now <--wayy to costly
+    treasureFaces[startFace] = false;
     setColor(RED);
     setColorOnFace(OFF, bottomFace);
   }
@@ -629,6 +631,8 @@ void deathtrapLoop() {
   else if (stepCounter == 4) {
 
   }
+
+  treasureSignal[bottomFace] = BLANK;
 }
 
 bool goLeft;
@@ -684,6 +688,7 @@ void switcherLoop() {
   }
 }
 
+
 void treasureTumble() {
 
   if (isTreasureOnMyBlink == true) {
@@ -702,6 +707,7 @@ void treasureTumble() {
 
   } else if (isTreasureOnMyBlink == false) {
     switchDirection();
+    stepCounter = 0;
   }
 }
 
