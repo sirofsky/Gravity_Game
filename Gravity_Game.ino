@@ -81,7 +81,6 @@ void loop() {
 
   setRole();
 
-
   leftFace = (bottomFace + 1) % 6;
   topLeftFace = (bottomFace + 2) % 6;
   topFace = (bottomFace + 3) % 6;
@@ -125,7 +124,18 @@ void wallLoop() {
   }
 
   countNeighbors(); //counts how many neighbors each blink has and stores that information
-  setWallRole(); //figures out what role to assign the blink based off of the neighbors counted
+
+  bool amDeathtrap;
+
+  if (buttonDoubleClicked()) {
+    amDeathtrap = !amDeathtrap;
+  }
+
+  if (amDeathtrap == true) {
+    deathtrapLoop();
+  } else {
+    setWallRole(); //figures out what role to assign the blink based off of the neighbors counted
+  }
   gravityLoop(); //sets gracity and stuff
 
   FOREACH_FACE(f) {
@@ -177,7 +187,7 @@ void wallLoop() {
       } else if (isValueReceivedOnFaceExpired(f)) {
         treasureSignal[f] = BLANK;
       }
-    } 
+    }
   }
 
   treasureTumble(); //listens for if treasure is on the face and runs the animation cycle
@@ -200,13 +210,13 @@ bool bCountTreasure;
 
 void bucketLoop() {
   if (bChangeRole) {
-    blinkRole = SPAWNER;
+    blinkRole = WALL;
     bChangeRole = false;
   }
 
   gravityLoop();
 
-  setColor(FEATURE_COLOR);
+  setColor(dim(FEATURE_COLOR, 150));
   setColorOnFace(BG_COLOR, bottomFace);
 
 
@@ -228,17 +238,6 @@ void bucketLoop() {
           bCountTreasure = true;
         }
       }
-    } else if (treasureSignal[f] == RECEIVING) {
-      //listen for treasure, go to blank
-      //if no neighbor, go back to blank
-
-      if (!isValueReceivedOnFaceExpired(f)) {
-        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == TREASURE) {
-          setColor(WHITE);
-          treasureSignal[f] = BLANK;
-          countTreasure();
-        }
-      }
     }
   }
 
@@ -254,8 +253,27 @@ void bucketLoop() {
             setColorOnFace(TREASURE_COLOR, topRightFace);
             if (treasureCount > 25) {
               setColorOnFace(TREASURE_COLOR, topFace);
+              if (treasureCount > 30) {
+                setColor(PURPLE);
+              }
             }
           }
+        }
+      }
+    }
+  }
+
+
+  FOREACH_FACE(f) {
+    if (treasureSignal[f] == RECEIVING) {
+      //listen for treasure, go to blank
+      //if no neighbor, go back to blank
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == TREASURE) {
+          setColor(WHITE);
+          treasureSignal[f] = BLANK;
+          countTreasure();
         }
       }
     }
@@ -302,6 +320,8 @@ void spawnerLoop() {
 
     }
   }
+
+ 
 
   FOREACH_FACE(f) {
 
@@ -732,6 +752,16 @@ void setRole() {
       //now change the role
       bChangeRole = true;
       bLongPress = false;
+    }
+  }
+
+  if (buttonMultiClicked()) {
+    if (buttonClickCount() == 3) {
+      if (blinkRole == WALL) {
+        blinkRole = SPAWNER;
+      } else if ( blinkRole == SPAWNER) {
+        blinkRole = WALL;
+      }
     }
   }
 
