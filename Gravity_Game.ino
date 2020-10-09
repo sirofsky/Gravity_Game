@@ -2,6 +2,9 @@
 //Game code by Jacob Surovsky
 //Gravity code by Josh Levine
 
+//Website: jacobsurovsky.com
+//Instagram: @coolthingsbyjacob
+
 const byte NO_PARENT_FACE = FACE_COUNT ;   // Signals that we do not currently have a parent
 
 byte parent_face = NO_PARENT_FACE;
@@ -59,6 +62,9 @@ byte secondFace;
 //SPAWNER
 bool treasurePrimed = false;
 bool dropTreasure;
+//autodrop stuff
+bool autoDrop;
+Timer autoDropTimer;
 
 Timer crumbleTimer;
 #define CRUMBLE_TIME 6000
@@ -304,24 +310,38 @@ void spawnerLoop() {
 
   setColor(dim(TREASURE_COLOR, 120));
 
-  //setting treasure animation
-  if (treasurePrimed == true) {
-    treasurePrimedAnimation();
-  } else {
-    setColor(dim(TREASURE_COLOR, 120));
+  if (buttonDoubleClicked()) {
+    autoDrop = !autoDrop; 
   }
 
-  treasureSignal[bottomFace] = BLANK;
+  if (autoDrop == true) {
+    setColorOnFace(WHITE, topFace);
 
-  if (dropTreasure == true) {
-    if (treasurePrimed == true) {
 
+    if (autoDropTimer.isExpired()) {
+      setColor(WHITE);
       treasureSignal[bottomFace] = SENDING;
+      autoDropTimer.set(2000);
+    } else if (!autoDropTimer.isExpired()) {
 
     }
-  }
+  } else if (autoDrop == false) {
+    treasureSignal[bottomFace] = BLANK;
+    //setting treasure animation
+    if (treasurePrimed == true) {
+      treasurePrimedAnimation();
+    } else {
+      setColor(dim(TREASURE_COLOR, 120));
+    }
 
- 
+    if (dropTreasure == true) {
+      if (treasurePrimed == true) {
+
+        treasureSignal[bottomFace] = SENDING;
+
+      }
+    }
+  }
 
   FOREACH_FACE(f) {
 
