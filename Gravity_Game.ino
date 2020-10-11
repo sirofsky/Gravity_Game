@@ -131,18 +131,18 @@ void wallLoop() {
 
   countNeighbors(); //counts how many neighbors each blink has and stores that information
 
-  bool amDeathtrap;
+//  bool amDeathtrap;
 
-  if (buttonDoubleClicked()) {
-    amDeathtrap = !amDeathtrap;
-  }
-
-  if (amDeathtrap == true) {
-    deathtrapLoop();
-  } else {
+//  if (buttonDoubleClicked()) {
+//    amDeathtrap = !amDeathtrap;
+//  }
+//
+//  if (amDeathtrap == true) {
+//    deathtrapLoop();
+//  } else if (amDeathtrap == false) {
     setWallRole(); //figures out what role to assign the blink based off of the neighbors counted
-  }
-  gravityLoop(); //sets gracity and stuff
+//  }
+  gravityLoop(); //sets gravity and stuff
 
   FOREACH_FACE(f) {
 
@@ -310,22 +310,19 @@ void spawnerLoop() {
 
   setColor(dim(TREASURE_COLOR, 120));
 
-  if (buttonDoubleClicked()) {
-    autoDrop = !autoDrop; 
+  if (buttonDoubleClicked()) { //double click to turn auto drop on and off
+    autoDrop = !autoDrop;
   }
 
-  if (autoDrop == true) {
+  if (autoDrop == true) { //if we're autodropping...
     setColorOnFace(WHITE, topFace);
-
 
     if (autoDropTimer.isExpired()) {
       setColor(WHITE);
-      treasureSignal[bottomFace] = SENDING;
+      treasureSignal[bottomFace] = SENDING; //send out a treasure every 2 seconds
       autoDropTimer.set(2000);
-    } else if (!autoDropTimer.isExpired()) {
-
     }
-  } else if (autoDrop == false) {
+  } else if (autoDrop == false) { //if we're not auto dropping, all of this complicated listening/not listening logic
     treasureSignal[bottomFace] = BLANK;
     //setting treasure animation
     if (treasurePrimed == true) {
@@ -336,9 +333,7 @@ void spawnerLoop() {
 
     if (dropTreasure == true) {
       if (treasurePrimed == true) {
-
         treasureSignal[bottomFace] = SENDING;
-
       }
     }
   }
@@ -511,7 +506,7 @@ void countNeighbors() { //count how many neighbors are around me and keep it in 
   }
 }
 
-void setWallRole() {
+void setWallRole() { //this is where we auto-assign what wall role to be
 
   if (isAlone()) {
     setColor(dim(BG_COLOR, 190));
@@ -577,7 +572,6 @@ void setWallRole() {
     }
   }
 }
-
 
 void goSideLoop() {
 
