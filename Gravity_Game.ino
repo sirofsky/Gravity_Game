@@ -131,17 +131,17 @@ void wallLoop() {
 
   countNeighbors(); //counts how many neighbors each blink has and stores that information
 
-//  bool amDeathtrap;
+  //  bool amDeathtrap;
 
-//  if (buttonDoubleClicked()) {
-//    amDeathtrap = !amDeathtrap;
-//  }
-//
-//  if (amDeathtrap == true) {
-//    deathtrapLoop();
-//  } else if (amDeathtrap == false) {
-    setWallRole(); //figures out what role to assign the blink based off of the neighbors counted
-//  }
+  //  if (buttonDoubleClicked()) {
+  //    amDeathtrap = !amDeathtrap;
+  //  }
+  //
+  //  if (amDeathtrap == true) {
+  //    deathtrapLoop();
+  //  } else if (amDeathtrap == false) {
+  setWallRole(); //figures out what role to assign the blink based off of the neighbors counted
+  //  }
   gravityLoop(); //sets gravity and stuff
 
   FOREACH_FACE(f) {
@@ -230,23 +230,6 @@ void bucketLoop() {
     treasureCount = 0;
   }
 
-  FOREACH_FACE(f) {
-    gravitySignal[f] = 6; //6 means bucket, I don't make the rules
-    spawnerSignal[f] = NOT_SPAWNER;
-    //    treasureSignal[f] = BLANK;
-
-    if (treasureSignal[f] == BLANK) {
-      //listen for sending, go to receiving
-
-      if (!isValueReceivedOnFaceExpired(f)) {
-        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == SENDING) {
-          treasureSignal[f] = RECEIVING;
-          bCountTreasure = true;
-        }
-      }
-    }
-  }
-
   if (treasureCount > 0) {
     setColorOnFace(TREASURE_COLOR, bottomFace);
     if (treasureCount > 5) {
@@ -271,6 +254,22 @@ void bucketLoop() {
 
 
   FOREACH_FACE(f) {
+    gravitySignal[f] = 6; //6 means bucket, I don't make the rules
+    spawnerSignal[f] = NOT_SPAWNER;
+    //    treasureSignal[f] = BLANK;
+
+    if (treasureSignal[f] == BLANK) {
+      //listen for sending, go to receiving
+
+      bCountTreasure = true;
+
+      if (!isValueReceivedOnFaceExpired(f)) {
+        if (getTreasureSignal(getLastValueReceivedOnFace(f)) == SENDING) {
+          treasureSignal[f] = RECEIVING;
+        }
+      }
+    }
+
     if (treasureSignal[f] == RECEIVING) {
       //listen for treasure, go to blank
       //if no neighbor, go back to blank
